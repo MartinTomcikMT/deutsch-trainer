@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="application-name" content="Deutsch Trainer 1.8">
+  <meta name="application-name" content="Deutsch Trainer 1.9.2">
   <meta name="theme-color" content="#122d3d">
   <meta name="description" content="Deutsch Trainer – osobný slovník a precvičovanie nemčiny.">
   <title>Deutsch Trainer · Tvoja nemčina</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
-  <link rel="stylesheet" href="./styles.css?v=1.8.0">
-  <script src="./spaced.js?v=1.8.0" defer></script>
-  <script src="./duo-game.js?v=1.8.0" defer></script>
-  <script src="./app.js?v=1.8.0" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=1.9.2">
+  <script src="./spaced.js?v=1.9.2" defer></script>
+  <script src="./duo-game.js?v=1.9.2" defer></script>
+  <script src="./extras.js?v=1.9.2" defer></script>
+  <script src="./app.js?v=1.9.2" defer></script>
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -32,20 +33,20 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="tip-card"><span class="tip-icon">✦</span><strong>Malý krok každý deň</strong><p>Aj 10 minút pravidelného precvičovania posunie tvoju nemčinu ďalej.</p></div>
-        <span class="version">VERZIA 1.8 · levely a 15 úloh</span>
+        <span class="version">VERZIA 1.9.2 · A2+ a pokročilé učenie</span>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div class="breadcrumb" id="breadcrumb">Osobná učebnica <span>/</span> Prehľad</div>
-        <div class="topbar-actions"><span class="release-pill" aria-label="Verzia aplikácie">v1.8</span> <button class="version-refresh" type="button" id="refreshVersionBtn" title="Stiahnuť najnovšiu verziu webových súborov; údaje v slovníku sa nemažú">Obnoviť aplikáciu ↻</button><span class="local-pill"><span class="dot"></span> Ukladá sa v prehliadači</span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
+        <div class="topbar-actions"><span class="release-pill" aria-label="Verzia aplikácie">v1.9.2</span> <button class="version-refresh" type="button" id="refreshVersionBtn" title="Stiahnuť najnovšiu verziu webových súborov; údaje v slovníku sa nemažú">Obnoviť aplikáciu ↻</button><span class="local-pill"><span class="dot"></span> <span id="headerStorageStatus">Lokálne úložisko</span></span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
       </header>
       <div class="content-body">
         <div id="notice" role="status" aria-live="polite" class="notice hidden"></div>
         <section class="page active" id="page-domov" aria-label="Prehľad">
           <div class="eyebrow">TVÔJ ŠTUDIJNÝ PRIESTOR</div>
-          <h1>Guten Morgen <span class="heading-star">✳</span></h1>
+          <h1><span id="dynamicGreeting">Guten Morgen</span> <span class="heading-star">✳</span></h1>
           <p class="page-lead">Dnes si osvojíš niekoľko nových výrazov a zopakuješ tie, ktoré by si už mohol zabudnúť.</p>
           <div class="stats-grid">
             <div class="stat-card"><div class="stat-top"><span>Slovíčka a frázy</span><span class="stat-symbol">▤</span></div><strong id="statEntries">0</strong><small>Záznamov v tvojej knižnici</small></div>
@@ -53,6 +54,7 @@
             <div class="stat-card"><div class="stat-top"><span>Úspešnosť</span><span class="stat-symbol">◎</span></div><strong id="statAccuracy">—</strong><small>Zo všetkých odpovedí</small></div>
           </div>
           <div class="daily-pulse" id="dailyPulse"><div><span class="eyebrow">DNES</span><strong id="homeTodayCount">0 otázok</strong><small>z denného cieľa 15 odpovedí</small></div><div class="pulse-progress"><span id="dailyPulseBar"></span></div><div><strong id="homeLearnedToday">0</strong><small>Prvýkrát precvičených slovíčok</small></div><div><strong id="homeDayStreak">0 dní</strong><small>Aktívna séria učenia</small></div></div>
+          <div class="local-data-note"><span>🔐 <strong>Súkromný lokálny režim</strong></span><span>Slovíčka a pokrok sú uložené len v tomto prehliadači. Google účet a synchronizácia prídu vo verzii 2.0.</span></div>
           <div class="dashboard-grid">
             <div class="feature-card gradient-card">
               <div class="eyebrow light">INTELIGENTNÉ OPAKOVANIE</div>
@@ -82,13 +84,13 @@
 
         <section class="page" id="page-ucenie" aria-label="Duolingo režim">
           <div class="eyebrow">TVÔJ KAŽDODENNÝ TRÉNING</div><h1>Duolingo režim <span class="heading-star">✳</span></h1>
-          <p class="page-lead">Jeden level = 15 rôznych cvičení. Najprv sa naučíš päť výrazov a precvičíš ich rôznymi spôsobmi; posledných päť úloh zopakuje najmä tvoje chyby. Každá lekcia má osem levelov.</p>
+          <p class="page-lead">Jeden level = 15 rôznych cvičení. Najprv sa naučíš päť výrazov a precvičíš ich rôznymi spôsobmi; posledných päť úloh zopakuje najmä tvoje chyby. Každá lekcia má približne 30 levelov.</p>
           <div class="practice-setup duo-setup">
             <div class="setup-card">
               <div class="step-eyebrow">UČENIE · PRIPRAV SI DNEŠNÉ KOLO</div>
               <div class="setup-section"><div class="step-title"><span class="step-number">1</span><strong>Učivo, z ktorého sa mám učiť</strong></div>
                 <label class="field"><span>Postup v učebnici (uzamknuté lekcie sa nedajú spustiť)</span><select id="studyLesson"><option value="lesson-1">Lekcia 1</option></select></label>
-                <div class="lesson-progress-card"><div class="lesson-progress-head"><strong id="duoLessonTitle">Lekcia 1</strong><span id="duoLessonNumbers">0 / 40 zvládnutých</span></div><div class="lesson-progress-track"><span id="duoLessonBar"></span></div><p id="duoLessonHint">Na odomknutie ďalšej lekcie zvládni základný balík tejto lekcie.</p></div>
+                <div class="lesson-progress-card"><div class="lesson-progress-head"><strong id="duoLessonTitle">Lekcia 1</strong><span id="duoLessonNumbers">0 / 30 úrovní</span></div><div class="lesson-progress-track"><span id="duoLessonBar"></span></div><p id="duoLessonHint">Na odomknutie ďalšej lekcie zvládni základný balík tejto lekcie.</p></div>
                 <p class="study-reassure"><strong>Duolingo mieša všetko:</strong> podstatné mená, slovesá, ostatné slovíčka a frázy. Ľahšie preklady prídu skôr, dopĺňanie viet a minulé časy až po osvojení významu.</p>
               </div>
               <div class="setup-section duo-level-section">
@@ -101,7 +103,7 @@
               <button class="btn btn-primary btn-large begin-training" id="beginDuoBtn">Spustiť Duolingo tréning →</button>
             </div>
             <aside class="setup-aside"><span class="big-glyph">↻</span><h3>Postupuj po úrovniach bez čakania dní.</h3>
-              <p>Každá lekcia má osem úrovní po päť základných výrazov. Po úspešnom zvládnutí poslednej úrovne sa odomkne ďalšia lekcia. Vlastný tréning zostáva bez obmedzení.</p>
+              <p>Každá lekcia má približne 30 úrovní po päť výrazov. Po úspešnom zvládnutí poslednej úrovne sa odomkne ďalšia lekcia. Vlastný tréning zostáva bez obmedzení.</p>
               <p><strong>Kedy sa vrátia?</strong> Chyby zopakuješ na konci aktuálneho kola a problematické výrazy sa vracajú aj v ďalších kolách.</p>
               <div class="aside-stat" id="duoDueCount"></div>
             </aside>
@@ -196,7 +198,7 @@
 
         <section class="page" id="page-statistiky" aria-label="Štatistiky učenia">
           <div class="eyebrow">MOJE VÝSLEDKY</div><h1>Štatistiky a pokrok</h1>
-          <p class="page-lead">Prehľad skutočných odpovedí uložených v tvojom prehliadači. Nové slovo znamená prvé precvičenie; osvojené slovo vyžaduje opakované úspechy.</p>
+          <p class="page-lead">Prehľad odpovedí uložených v tomto prehliadači. Nové slovo znamená prvé precvičenie; osvojené slovo vyžaduje opakované úspechy.</p>
           <div class="stats-grid stats-extra">
             <div class="stat-card"><div class="stat-top"><span>Dnes otázok</span></div><strong id="statsToday">0</strong><small id="statsTodayAccuracy">Úspešnosť —</small></div>
             <div class="stat-card"><div class="stat-top"><span>Posledných 7 dní</span></div><strong id="statsWeek">0</strong><small id="statsWeekAccuracy">Úspešnosť —</small></div>
@@ -208,6 +210,7 @@
             <div class="stat-card"><div class="stat-top"><span>Na opakovanie</span></div><strong id="statsDue">0</strong><small>Už preberané, termín opakovania nastal</small></div>
           </div>
           <div class="stats-chart-card"><h2>Posledných 7 dní</h2><p class="muted-small">Počet zodpovedaných otázok podľa dňa. Opakovaná otázka sa počíta znovu.</p><div id="statsChart" class="weekly-chart"></div></div>
+          <div class="stats-chart-card"><h2>Úspechy a odznaky</h2><p class="muted-small">Odomykajú sa automaticky podľa uložených odpovedí a dokončených úrovní.</p><div id="achievementsGrid" class="achievements-grid"></div></div>
           <div class="stats-chart-card"><h2>Čo potrebuješ ešte trénovať</h2><p class="muted-small">Najčastejšie nesprávne odpovede za všetky tréningy.</p><div id="statsHardWords" class="hard-word-list"></div></div>
         </section>
         <section class="page" id="page-import" aria-label="Import a zálohy">
@@ -218,12 +221,31 @@
               <label class="file-label"><input type="file" id="jsonFile" accept=".json,application/json"><span>↑ Vybrať súbor .json</span></label><div class="file-meta" id="selectedFile"></div><button class="btn btn-primary full" id="previewImportBtn">Skontrolovať import →</button>
               <div id="importPreview" class="import-preview hidden"></div>
             </div>
-            <div class="side-stack"><div class="setup-card"><div class="step-eyebrow">02 · ZÁLOHUJ</div><h2>Export celej databázy</h2><p>Stiahni si všetky slovíčka, gramatické tvary aj históriu odpovedí. Tento súbor dokážeš kedykoľvek opäť importovať.</p><button class="btn btn-outline full" id="exportBtn">↓ Stiahnuť kompletnú zálohu JSON</button></div><div class="setup-card aside-help"><h3>Ako fungujú aktualizácie?</h3><p>Nové položky sa pridajú. Pri existujúcich sa štandardne vyplnia len prázdne polia. Tvoje odpovede a progres sa nemažú.</p><p><strong>Pozor:</strong> Údaje sú len v tomto prehliadači. Pravidelne si sťahuj zálohu.</p></div></div>
+            <div class="side-stack"><div class="setup-card"><div class="step-eyebrow">02 · ZÁLOHUJ</div><h2>Export celej databázy</h2><p>Stiahni si všetky slovíčka, gramatické tvary aj históriu odpovedí. Tento súbor dokážeš kedykoľvek opäť importovať.</p><button class="btn btn-outline full" id="exportBtn">↓ Stiahnuť kompletnú zálohu JSON</button></div><div class="setup-card aside-help"><h3>Ako fungujú aktualizácie?</h3><p>Nové položky sa pridajú. Pri existujúcich sa štandardne vyplnia len prázdne polia. Tvoje odpovede a progres sa nemažú.</p><p><strong>Pozor:</strong> Údaje sú zatiaľ len v tomto prehliadači. Pred resetom a väčšou aktualizáciou si stiahni kompletnú zálohu. Cloud a Google prihlásenie pridáme vo verzii 2.0.</p></div></div>
+          </div>
+          <div class="reset-zone" aria-labelledby="reset-zone-title">
+            <div class="eyebrow">03 · ZAČAŤ ODZNOVA</div>
+            <h2 id="reset-zone-title">Správa uložených údajov</h2>
+            <p>Chceš začať od prvého levelu? Nemusíš používať nastavenia Chrome. Vyber si, čo sa má vymazať.</p>
+            <div class="reset-options">
+              <div><strong>Vynulovať iba progres</strong><p>Odstráni odpovede, úspechy, štatistiky aj odomknuté levely. Slovník zostane.</p><button type="button" class="btn btn-outline" id="resetProgressBtn">↻ Začať učenie odznova</button></div>
+              <div><strong>Vymazať celú databázu</strong><p>Natrvalo odstráni slovíčka, importy aj všetok progres. Potom môžeš importovať nový slovník.</p><button type="button" class="btn btn-outline btn-danger-reset" id="resetAllBtn">✕ Vymazať všetky údaje</button></div>
+            </div>
+            <p class="muted-small">Obe možnosti vyžadujú potvrdenie. Pred vymazaním si odporúčame stiahnuť JSON zálohu vyššie.</p>
           </div>
         </section>
       </div>
     </main>
   </div>
+
+  <dialog id="resetDialog" class="reset-dialog" aria-labelledby="resetDialogTitle">
+    <div class="dialog-head"><div><span class="eyebrow">SPRÁVA DATABÁZY</span><h2 id="resetDialogTitle">Potvrdiť vymazanie</h2></div></div>
+    <div class="dialog-body"><p id="resetDialogDescription"></p>
+      <label class="field"><span>Pre potvrdenie napíš <strong id="resetDialogToken">RESET</strong></span><input id="resetConfirmInput" autocomplete="off" spellcheck="false" placeholder="Potvrdzovacie slovo"></label>
+      <p class="muted-small">Táto akcia sa nedá vrátiť späť bez vlastnej JSON zálohy.</p>
+    </div>
+    <div class="dialog-actions"><button type="button" class="btn btn-outline" id="resetCancelBtn">Zrušiť</button><button type="button" class="btn btn-danger-reset" id="resetConfirmBtn" disabled>Vymazať</button></div>
+  </dialog>
 
   <dialog id="entryDialog" class="entry-dialog" aria-labelledby="dialogHeading">
     <form method="dialog" id="entryForm" class="entry-form">

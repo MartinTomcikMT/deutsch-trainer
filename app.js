@@ -1,10 +1,10 @@
-/* Deutsch Trainer 1.8 – fifteen-step Duolingo levels with adaptive recap. */
+/* Deutsch Trainer 1.9.2 – local edition, A2+ Duolingo, achievements, safe reset. */
 'use strict';
 
 const DB_NAME = 'deutsch-trainer-v1';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const DATA_FORMAT = 'deutsch-trainer';
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.2';
 const DATA_VERSION = 1;
 const entryFields = ['type','de','sk','article','plural','preterite','perfect','auxiliary','exampleDe','exampleSk','level','lesson','notes'];
 const typeLabels = {verb:'Sloveso',noun:'Podstatné meno',phrase:'Fráza / veta',other:'Slovíčko'};
@@ -20,6 +20,7 @@ let studyLastPage='ucenie';
 let duoState={id:'duo-progress-v2',lessons:{}};
 const LIBRARY_PAGE_SIZE=45;
 let libraryVisible=LIBRARY_PAGE_SIZE;
+
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -54,20 +55,21 @@ function dbGetAll(store) {
   });
 }
 function dbPut(store,data) {
-  return new Promise((resolve,reject) => {
-    const transaction = db.transaction(store,'readwrite');
+  return new Promise((resolve,reject)=>{
+    const transaction=db.transaction(store,'readwrite');
     transaction.objectStore(store).put(data);
-    transaction.oncomplete = resolve;
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error);
+    transaction.oncomplete=()=>resolve();
+    transaction.onerror=()=>reject(transaction.error);
+    transaction.onabort=()=>reject(transaction.error);
   });
 }
 function dbDelete(store,id) {
-  return new Promise((resolve,reject) => {
-    const transaction = db.transaction(store,'readwrite');
+  return new Promise((resolve,reject)=>{
+    const transaction=db.transaction(store,'readwrite');
     transaction.objectStore(store).delete(id);
-    transaction.oncomplete = resolve;
-    transaction.onerror = () => reject(transaction.error);
+    transaction.oncomplete=()=>resolve();
+    transaction.onerror=()=>reject(transaction.error);
+    transaction.onabort=()=>reject(transaction.error);
   });
 }
 async function reloadData() {
@@ -75,7 +77,7 @@ async function reloadData() {
   const metadata=await dbGetAll('meta');
   duoState=metadata.find(x=>x.id==='duo-progress-v2')||{id:'duo-progress-v2',lessons:{}};
   entries.sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-  renderStats(); renderLessonOptions(); renderLibraryTopics(); renderLibrary(); renderCategories(); renderQuizAvailability(); updateDuolingoPreview();
+  renderStats(); renderAchievements(); renderLessonOptions(); renderLibraryTopics(); renderLibrary(); renderCategories(); renderQuizAvailability(); updateDuolingoPreview();
 }
 function newReview() { return {attempts:0,correct:0,wrong:0,streak:0,lastReviewed:null,dueAt:null}; }
 function val(v,max=350) {return typeof v === 'string' ? v.trim().slice(0,max) : '';}
@@ -205,41 +207,71 @@ function getTopics(list){
   const counts=new Map();for(const e of list)for(const t of e.tags||[]){if(isUsefulTopic(t))counts.set(t,(counts.get(t)||0)+1);}
   return [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'sk'));
 }
-const DUO_CORE_SIZE=40;
-const DUO_TYPE_QUOTAS={noun:12,verb:12,phrase:10,other:6};
+const DUO_CORE_SIZE=150;
+const DUO_TYPE_QUOTAS={noun:50,verb:45,phrase:35,other:20};
 function duoLessonState(key){
   if(!duoState.lessons)duoState.lessons={};
   return duoState.lessons[key]||{completed:[],best:{},history:[],coreIds:[]};
 }
-async function saveDuoState(){await dbPut('meta',duoState);}
+async function saveDuoState(){duoState.updatedAt=new Date().toISOString();await dbPut('meta',duoState);}
+// Use the ACTUAL A2+ core tagged in the new source-based JSON, never a random
+// first 40 A1 words. If only an older import exists, gracefully fall back to its core.
 function duoCoreForLesson(key){
   const all=entries.filter(e=>lessonMatches(e,key));
-  const eligible=all.filter(e=>!(e.tags||[]).some(t=>/^Časť B\b/i.test(t)));
+  const n=Number(String(key).replace('lesson-',''));
+  const newTag='Jadro A2+ L'+n,oldTag='Základné L'+n;
+  // A record may have a Part B tag from another lesson: never drop explicitly selected core words.
+  const eligible=all.filter(e=>(e.tags||[]).includes(newTag)||(e.tags||[]).includes(oldTag)||!(e.tags||[]).some(t=>/^Časť B\b/i.test(t)));
   const pool=eligible.length?eligible:all;
-  const levelRank={A1:0,A2:1,B1:2,B2:3};
-  const sorted=[...pool].sort((a,b)=>(levelRank[a.level]??3)-(levelRank[b.level]??3)||a.de.length-b.de.length||a.de.localeCompare(b.de,'de'));
+  const authoritative=pool.filter(e=>(e.tags||[]).includes(newTag));
+  const legacy=pool.filter(e=>(e.tags||[]).includes(oldTag));
+  const preferred=authoritative.length?authoritative:legacy.length?legacy:pool;
+  const priority=e=>preferred.includes(e)?0:1;
+  const sectionRank=e=>(e.tags||[]).some(x=>x==='Časť A')?0:1;
+  const levelRank={A2:0,A1:1,B1:2,B2:3};
+  // With the complete A2+ import, learn ALL tagged 150 core items.
+  // Category quotas are only a fallback for older imports without a full curated core.
+  const strictCore=authoritative.length>=DUO_CORE_SIZE;
+  const sorted=[...(strictCore?authoritative:pool)].sort((a,b)=>priority(a)-priority(b)||sectionRank(a)-sectionRank(b)||
+    (levelRank[a.level]??3)-(levelRank[b.level]??3)||a.de.localeCompare(b.de,'de'));
   const groups={};
   for(const [type,max] of Object.entries(DUO_TYPE_QUOTAS)){
     const candidates=sorted.filter(e=>e.type===type);
-    // In phrase lessons, prefer complete bilingual sentences suitable for cloze/building tasks.
     if(type==='phrase')candidates.sort((a,b)=>{
       const full=e=>/[.!?]$/.test(e.de.trim())&&/[.!?]$/.test(e.sk.trim())&&e.de.split(/\s+/).length>=3;
-      return Number(full(b))-Number(full(a)) || (a.de.length-b.de.length);
+      return priority(a)-priority(b)||Number(full(b))-Number(full(a))||a.de.localeCompare(b.de,'de');
     });
-    groups[type]=candidates.slice(0,max);
+    groups[type]=strictCore?candidates:candidates.slice(0,max);
   }
-  // Interleave types so each five-item level offers varied vocabulary.
   const selected=[],used=new Set();
-  while(selected.length<DUO_CORE_SIZE && Object.values(groups).some(g=>g.length)){
-    for(const type of ['noun','verb','phrase','other']){
+  // Keep verbs present from the first level onward; do not put them after hundreds of nouns.
+  while(selected.length<DUO_CORE_SIZE&&Object.values(groups).some(g=>g.length)){
+    for(const type of ['verb','noun','phrase','other']){
       const e=groups[type].shift();if(e&&!used.has(e.id)){selected.push(e);used.add(e.id);}
     }
   }
   for(const e of sorted){if(selected.length>=DUO_CORE_SIZE)break;if(!used.has(e.id)){selected.push(e);used.add(e.id);}}
-  const snapshot=duoLessonState(key).coreIds||[];
-  if(snapshot.length){const byId=new Map(all.map(e=>[e.id,e]));const fixed=snapshot.map(id=>byId.get(id)).filter(Boolean);
-    const existing=new Set(fixed.map(e=>e.id));return [...fixed,...selected.filter(e=>!existing.has(e.id))].slice(0,DUO_CORE_SIZE);}
-  return selected.slice(0,DUO_CORE_SIZE);
+  // If a user already completed levels under v1.8/v1.9 (old 40-item path),
+  // retain the words of those PASSED levels and append every authoritative A2+ word.
+  // This can result in 151–160 items during migration; nothing already learnt is lost.
+  const state=duoLessonState(key),snapshot=state.coreIds||[];
+  if(snapshot.length){
+    const byId=new Map(all.map(e=>[e.id,e]));
+    const fixed=snapshot.map(id=>byId.get(id)).filter(Boolean);
+    if(snapshot.length<DUO_CORE_SIZE){
+      let contiguous=0;const done=new Set(state.completed||[]);
+      while(done.has(contiguous+1))contiguous++;
+      const keep=fixed.slice(0,contiguous*DeutschGame.SIZE);
+      const ids=new Set(keep.map(x=>x.id));
+      const rest=selected.filter(e=>!ids.has(e.id));
+      // Include all expressly selected A2+ material even if old levels contained extras.
+      const missing=authoritative.filter(e=>!ids.has(e.id)&&!rest.some(x=>x.id===e.id));
+      return [...keep,...rest,...missing];
+    }
+    const ids=new Set(fixed.map(e=>e.id));
+    return [...fixed,...selected.filter(e=>!ids.has(e.id))].slice(0,Math.max(DUO_CORE_SIZE,fixed.length));
+  }
+  return selected;
 }
 function duoLessonProgress(key){
   const pool=duoCoreForLesson(key),levels=Math.ceil(pool.length/DeutschGame.SIZE);
@@ -368,6 +400,7 @@ function renderStats(){
   $('statAccuracy').textContent=attempts.length ? `${Math.round(attempts.filter(a=>a.correct).length/attempts.length*100)} %` : '—';
   $('homeEmpty').hidden=entries.length>0;
   renderLearningStats();
+  renderAchievements();
 }
 function renderCategories(){
   const kinds=[['verb','↝','Slovesá'],['noun','▥','Podstatné mená'],['phrase','❞','Frázy a vety'],['other','✳','Ostatné']];
@@ -601,35 +634,44 @@ function answerSpellings(answer,kind){
 // One record may carry SEVERAL correct meanings; the learner needs only one.
 // For phrases, two separate questions ("Aké...? Čím...?") are treated as alternatives,
 // but a normal two-sentence story is NOT split into incorrectly-short answers.
+// Translator data sometimes includes explanations instead of an actual answer,
+// e.g. "od (minulosti až doteraz); s datívom". Those notes must never be
+// required or shown as a multiple-choice answer. Preserve the full original
+// text as a backward-compatible accepted answer.
+function cleanGloss(text){
+  return String(text||'').replace(/\s*\([^()]*\)/g,'').replace(/\s+/g,' ').trim().replace(/[;,]+$/,'').trim();
+}
+function isGrammarNote(text){
+  return /^(?:s|so|v|vo|bez)\s+(?:dat[ií]v\w*|akuzat[ií]v\w*|genit[ií]v\w*|inštrument[aá]l\w*|lok[aá]l\w*)\b/i.test(text)
+     || /^(?:gramatick[aá] pozn[aá]mka|predlo[zž]ka|pou[zž][ií]va sa)\b/i.test(text);
+}
 function translationVariants(e,kind='de_to_sk',task=null){
   const base=correctAnswer(e,kind,task);
   const translations=[base,...(['de_to_sk','sk_to_de'].includes(kind)?(e.alternatives||[]):[])];
   const variants=[];
   for(const raw of translations){
-    const value=String(raw||'').trim();
-    if(!value)continue;
-    variants.push(value);
-    if(kind==='de_to_sk'){
-      if(e.type==='phrase'){
-        // Split only explicit alternative questions or alternative parts separated by " / " or " | ".
-        // Do not split ordinary adjacent sentences such as "Prišiel domov. Potom jedol."
-        const questionParts=value.split(/(?<=[?])\s+(?=[\p{Lu}])/u).map(x=>x.trim()).filter(Boolean);
-        if(questionParts.length>1 && questionParts.every(x=>x.endsWith('?')))variants.push(...questionParts);
-        variants.push(...value.split(/\s+(?:\/|\|)\s+/).map(x=>x.trim()).filter(Boolean));
-      } else {
-        variants.push(...value.split(/\s*[,;/]\s*/).map(x=>x.trim()).filter(Boolean));
-        variants.push(value.replace(/\s*\([^)]*\)/g,'').trim());
+    const value=String(raw||'').trim();if(!value)continue;
+    const chunks=kind==='de_to_sk'&&e.type!=='phrase'?value.split(/\s*[,;/]\s*/):
+      kind==='de_to_sk'&&e.type==='phrase'?value.split(/\s+(?:\/|\|)\s+|\s*;\s*/):[value];
+    for(const chunk of chunks){
+      if(kind==='de_to_sk'&&e.type==='phrase'){
+        const questions=chunk.split(/(?<=[?])\s+(?=[\p{Lu}])/u).map(x=>x.trim()).filter(Boolean);
+        if(questions.length>1&&questions.every(x=>x.endsWith('?'))){
+          for(const q of questions){const cleaned=cleanGloss(q);if(cleaned)variants.push(cleaned);}
+          continue;
+        }
       }
+      const cleaned=kind==='de_to_sk'?cleanGloss(chunk):chunk.trim();
+      if(cleaned&&(kind!=='de_to_sk'||!isGrammarNote(cleaned)))variants.push(cleaned);
     }
+    // Still accept the raw complete translation, but do not make it the expected label.
+    if(value&&!isGrammarNote(value))variants.push(value);
   }
   return [...new Set(variants.filter(Boolean))];
 }
 function primaryTranslation(e,kind='de_to_sk'){
-  const full=correctAnswer(e,kind);
-  const alternatives=translationVariants(e,kind).filter(x=>x!==full);
-  // Pick a complete variant, rather than presenting multiple alternatives as one answer.
-  // For a single meaning, preserve the original formatting.
-  return alternatives.length?alternatives[0]:full;
+  const choices=translationVariants(e,kind);
+  return choices[0]||correctAnswer(e,kind);
 }
 function acceptableAnswers(e,kind,task=null){
   return [...new Set(translationVariants(e,kind,task).flatMap(x=>answerSpellings(x,kind)).map(x=>normalizeAnswer(x,kind)).filter(Boolean))];
@@ -786,7 +828,7 @@ async function finalizeDuoRound(){
   d.best={...(d.best||{})};d.best[level]=Math.max(d.best[level]||0,quiz.good);
   d.history=[...(d.history||[]),{level,score:quiz.good,total:DeutschGame.STEPS,passed,date:new Date().toISOString()}].slice(-150);
   duoState.lessons[key]=d;
-  try{await saveDuoState();}catch(err){notify('Výsledok úrovne sa nepodarilo uložiť: '+err.message,true);}
+  try{await saveDuoState();renderAchievements();}catch(err){notify('Výsledok úrovne sa nepodarilo uložiť: '+err.message,true);}
   const status=duoLessonProgress(key);
   $('duoFinishInfo').classList.remove('hidden');
   $('duoFinishInfo').innerHTML=`<strong>${passed?'✓ Úroveň '+level+' dokončená!':'Úroveň '+level+' zatiaľ nie je dokončená'}</strong><p>${passed?(status.done?'Celá lekcia dokončená. Ďalšia lekcia je odomknutá, ak je naimportovaná.':'Môžeš pokračovať na úroveň '+status.current+'.'):'Na postup potrebuješ aspoň '+DeutschGame.PASS+' správnych odpovedí z 15. Zopakuj rovnakú úroveň.'}</p><p>V lekcii máš dokončených <b>${status.passed} z ${status.levels}</b> úrovní.</p>`;
@@ -832,7 +874,7 @@ function getDuoReviewPool(key,level){
 function updateDuolingoPreview(){
   const lesson=$('studyLesson').value,status=duoLessonProgress(lesson),state=duoLessonState(lesson);
   $('duoLessonTitle').textContent=lessonLabel(lesson);
-  $('duoLessonNumbers').textContent=`${status.passed} / ${status.levels} úrovní`;
+  $('duoLessonNumbers').textContent=`${status.passed} / ${status.levels} úrovní · ${Math.min(status.passed*DeutschGame.SIZE,status.total)} / ${status.total} výrazov`;
   $('duoLessonBar').style.width=(status.levels?100*status.passed/status.levels:0)+'%';
   $('duoLessonHint').textContent=status.done?'Lekcia dokončená. Môžeš pokračovať ďalej.':
     `Aktuálne: úroveň ${status.current} z ${status.levels}. Na postup potrebuješ 12 z 15 správnych odpovedí. Na ďalšiu lekciu dokonči všetky úrovne.`;
@@ -845,8 +887,8 @@ function updateDuolingoPreview(){
   }
   const pool=studyPool(),review=getDuoReviewPool(lesson,status.current);
   const focus=pool.slice((status.current-1)*DeutschGame.SIZE,status.current*DeutschGame.SIZE);
-  $('duoDueCount').textContent=`Nové slová v tejto úrovni: ${focus.filter(e=>!DeutschSRS.hasStudied(e)).length} · Preberané na opakovanie: ${review.length}.`;
-  $('duoPreview').innerHTML=pool.length?`<strong>Úroveň ${status.current}: 15 úloh · 10 na učenie + 5 opakovaní</strong><br>${status.done?'Všetky úrovne sú hotové. Môžeš si ešte precvičiť poslednú.':'Najprv päť výrazov a pestré úlohy. Na konci sa vrátia najmä tie, v ktorých urobíš chybu.'}`:
+  $('duoDueCount').textContent=`Nové slová v tejto úrovni: ${focus.filter(e=>!DeutschSRS.hasStudied(e)).length} · Preberané na opakovanie: ${review.length} · Slovesá v učive: ${pool.filter(e=>e.type==='verb').length}.`;
+  $('duoPreview').innerHTML=pool.length?`<strong>Úroveň ${status.current} z ${status.levels}: 15 úloh · 10 na učenie + 5 opakovaní</strong><br>${status.done?'Všetky úrovne sú hotové. Môžeš si ešte precvičiť poslednú.':'Postupne prejdeš '+pool.length+' základných A2+ výrazov vrátane '+pool.filter(e=>e.type==='verb').length+' slovies. Na konci kola sa vrátia najmä chybné odpovede.'}`:
     '<strong>Táto lekcia je zamknutá alebo zatiaľ nie je naimportovaná.</strong>';
   $('beginDuoBtn').disabled=!pool.length||!duoLessonUnlocked(lesson);
 }
@@ -857,7 +899,7 @@ async function startDuolingo(){
   const focus=pool.slice((level-1)*DeutschGame.SIZE,level*DeutschGame.SIZE);
   if(!focus.length){notify('Pre túto lekciu chýba učivo. Najprv importuj slovíčka.',true);return;}
   const previous=duoLessonState(lesson);
-  if(!previous.coreIds?.length){duoState.lessons[lesson]={...previous,coreIds:pool.map(x=>x.id)};await saveDuoState();}
+  if((previous.coreIds||[]).join('|')!==pool.map(x=>x.id).join('|')){duoState.lessons[lesson]={...previous,coreIds:pool.map(x=>x.id)};await saveDuoState();}
   const review=getDuoReviewPool(lesson,level);
   const lessonEntries=entries.filter(e=>lessonMatches(e,lesson));
   const tasks=DeutschGame.buildOpening(focus,review,lessonEntries);
@@ -897,6 +939,7 @@ function renderLearningStats(){
   const hard=[...entries].filter(e=>wrong.has(e.id)).sort((a,b)=>(wrong.get(b.id)||0)-(wrong.get(a.id)||0)).slice(0,8);
   $('statsHardWords').innerHTML=hard.length?hard.map(e=>`<div class="hard-word"><span><strong>${escapeHtml(displayName(e))}</strong><small>${escapeHtml(e.sk)}</small></span><em>${wrong.get(e.id)}× chyba</em></div>`).join(''):'<p class="muted-small">Zatiaľ žiadne chyby. Začni prvým tréningom.</p>';
   updateDuolingoPreview();
+  renderAchievements();
 }
 async function refreshApp(){
   const confirmed=confirm('Znovu načítať súbory aplikácie? Slovník ani výsledky učenia sa tým nevymažú.');
@@ -908,7 +951,7 @@ async function refreshApp(){
   const url=new URL(window.location.href);url.searchParams.set('dt_reload',Date.now().toString());window.location.replace(url.href);
 }
 
-const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.8 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
+const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.9 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
 async function copyText(text){
   try{await navigator.clipboard.writeText(text);notify('Prompt je skopírovaný. Vlož ho do ChatGPT a doplň zoznam slov.');}
   catch{const el=$('jsonInput');el.value=text;el.focus();el.select();notify('Automatické kopírovanie nie je dostupné. Prompt je označený, skopíruj ho pomocou Ctrl+C.');}
@@ -962,6 +1005,76 @@ async function confirmImport(){
     await reloadData();notify(`Import dokončený: ${added} nových, ${updated} doplnených, ${unchanged} bez zmeny.`);
   }catch(err){notify('Import sa nepodarilo dokončiť: '+err.message,true);if(button)button.disabled=false;}
 }
+// Both destructive actions run in one IndexedDB transaction, so failures roll back.
+let resetKind=null;
+const resetTokens={progress:'RESET',all:'VYMAZAT'};
+function openResetDialog(kind){
+  if(!db){notify('Databáza nie je dostupná.',true);return;}
+  resetKind=kind;
+  const all=kind==='all';
+  $('resetDialogTitle').textContent=all?'Vymazať celú databázu?':'Vynulovať výsledky učenia?';
+  $('resetDialogDescription').textContent=all
+    ?'Natrvalo sa zmažú všetky slovíčka, importované lekcie, odpovede, štatistiky, levely aj odznaky v tomto prehliadači. Aplikácia zostane nainštalovaná, ale slovník bude prázdny.'
+    :'Zmaže sa celá história odpovedí, úspešnosť, opakovacie termíny, odznaky a dokončené levely. Všetky slovíčka, preklady, kategórie a lekcie zostanú zachované.';
+  $('resetDialogToken').textContent=resetTokens[kind];
+  $('resetConfirmInput').value='';
+  $('resetConfirmBtn').disabled=true;
+  $('resetConfirmBtn').textContent=all?'Vymazať všetko':'Vynulovať progres';
+  $('resetDialog').showModal();
+  $('resetConfirmInput').focus();
+}
+function closeResetDialog(){ $('resetDialog').close();resetKind=null; }
+function executeReset(kind){
+  return new Promise((resolve,reject)=>{
+    const stores=['entries','attempts','meta'];
+    // Older prerelease installations may additionally contain an unused sync queue.
+    if(db.objectStoreNames.contains('sync_ops'))stores.push('sync_ops');
+    const tx=db.transaction(stores,'readwrite');
+    const entryStore=tx.objectStore('entries');
+    if(kind==='all'){
+      entryStore.clear();
+      tx.objectStore('attempts').clear();
+      tx.objectStore('meta').clear();
+      if(stores.includes('sync_ops'))tx.objectStore('sync_ops').clear();
+    }else{
+      tx.objectStore('attempts').clear();
+      tx.objectStore('meta').delete('duo-progress-v2');
+      // Reset each entry without changing its meaning, ID, lesson or tags.
+      const cursorRequest=entryStore.openCursor();
+      cursorRequest.onsuccess=()=>{
+        const cursor=cursorRequest.result;
+        if(!cursor)return;
+        const e=cursor.value;
+        e.review=newReview();
+        e.reviewModes={};
+        cursor.update(e);
+        cursor.continue();
+      };
+    }
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error('Zlyhala databázová transakcia.'));
+    tx.onabort=()=>reject(tx.error||new Error('Transakcia bola zrušená.'));
+  });
+}
+async function confirmReset(){
+  const kind=resetKind;
+  if(!kind||$('resetConfirmInput').value.trim().toUpperCase()!==resetTokens[kind])return;
+  const btn=$('resetConfirmBtn');btn.disabled=true;
+  try{
+    if(quiz)resetPractice();
+    await executeReset(kind);
+    closeResetDialog();
+    importPending=null;
+    $('jsonInput').value='';$('jsonFile').value='';$('selectedFile').textContent='';
+    $('importPreview').classList.add('hidden');
+    await reloadData();
+    switchPage(kind==='all'?'import':'ucenie');
+    notify(kind==='all'
+      ?'Databáza bola vymazaná. Teraz importuj nový JSON slovník a začni od Levelu 1.'
+      :'Progres je vynulovaný. Slovník zostal zachovaný a začínaš od Levelu 1.');
+  }catch(err){notify('Reset sa nepodarilo dokončiť: '+err.message,true);btn.disabled=false;}
+}
+
 function exportData(){
   const payload={format:DATA_FORMAT,version:DATA_VERSION,backup:true,exportedAt:new Date().toISOString(),entries,attempts,duoProgress:duoState};
   downloadJson(payload,`deutsch-trainer-zaloha-${new Date().toISOString().slice(0,10)}.json`);
@@ -1046,14 +1159,28 @@ function bind(){
   $('jsonFile').addEventListener('change',handleFile);
   $('previewImportBtn').addEventListener('click',previewImport);
   $('exportBtn').addEventListener('click',exportData);
+  $('resetProgressBtn').addEventListener('click',()=>openResetDialog('progress'));
+  $('resetAllBtn').addEventListener('click',()=>openResetDialog('all'));
+  $('resetCancelBtn').addEventListener('click',closeResetDialog);
+  $('resetConfirmInput').addEventListener('input',()=>{
+    $('resetConfirmBtn').disabled=!resetKind||$('resetConfirmInput').value.trim().toUpperCase()!==resetTokens[resetKind];
+  });
+  $('resetConfirmBtn').addEventListener('click',confirmReset);
+  $('resetDialog').addEventListener('close',()=>{resetKind=null;});
+
+
 }
 async function init(){
   bind();switchPage(location.hash.slice(1)||'domov',false);
   if(!('indexedDB' in window)){notify('Tento prehliadač nepodporuje IndexedDB. Použi aktuálny Chrome, Firefox alebo Edge.',true);return;}
-  try{db=await idbOpen();await reloadData();}
+  try{db=await idbOpen();await reloadData();updateGreeting();}
   catch(err){notify('Nedá sa otvoriť lokálna databáza: '+err.message,true);}
   if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')) {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
 }
 document.addEventListener('DOMContentLoaded',init);
+window.addEventListener('focus',updateGreeting);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateGreeting();});
+setInterval(updateGreeting,60000);
+

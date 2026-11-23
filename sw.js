@@ -1,6 +1,6 @@
 /* Cache only application code, never user records. Bump version with code changes. */
-const CACHE_NAME='deutsch-trainer-static-v1.8.0';
-const ASSETS=['./','./index.html','./styles.css?v=1.8.0','./spaced.js?v=1.8.0','./duo-game.js?v=1.8.0','./app.js?v=1.8.0','./manifest.webmanifest','./ukazkove-slovicka.json','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE_NAME='deutsch-trainer-static-v1.9.2';
+const ASSETS=['./','./index.html','./extras.js?v=1.9.2','./styles.css?v=1.9.2','./spaced.js?v=1.9.2','./duo-game.js?v=1.9.2','./app.js?v=1.9.2','./manifest.webmanifest','./ukazkove-slovicka.json','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('deutsch-trainer-static-')&&k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{

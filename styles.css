@@ -122,3 +122,30 @@
 .builder-token.used{opacity:.3;cursor:default}
 .builder-chosen .builder-token{background:#e8f5ed;border-color:#79b8a0}
 @media(max-width:580px){.duo-level-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.matching-grid{gap:7px}.match-button{padding:8px 5px;font-size:12px;min-height:62px}}
+
+/* Deutsch Trainer 1.9 – profile and achievement components */
+.account-card{background:linear-gradient(110deg,#e6eef0,#f5f7f4);padding:22px;border:1px solid #d5e1e1;border-radius:18px;display:flex;gap:16px;align-items:center;justify-content:space-between;margin:22px 0}
+.account-card h2{margin:4px 0 5px;font-size:1.2rem}.account-card p{margin:0 0 6px;max-width:610px}.account-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.account-actions button{white-space:normal}
+.achievements-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-top:16px}
+.achievement{border:1px solid #d6ddda;border-radius:14px;padding:14px;background:#fff;min-height:120px;display:flex;flex-direction:column;gap:6px}.achievement.locked{opacity:.51;background:#f2f4f3}
+.achievement .emoji{font-size:1.6rem}.achievement strong{font-size:.94rem}.achievement small{color:#5b6764;font-size:.79rem}.achievement .done{color:#23734e;font-weight:700;font-size:.76rem}
+@media(max-width:700px){.account-card{flex-direction:column;align-items:flex-start}.account-actions{justify-content:flex-start}}
+
+/* 1.9.2 – local storage, safe in-app reset */
+.local-data-note{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;padding:13px 18px;border-radius:13px;background:var(--surface,#f1f7f7);border:1px solid #d9e9e9;margin-bottom:23px;font-size:13px;color:var(--ink,#25414b)}
+.local-data-note span:first-child{white-space:nowrap}
+.reset-zone{border:1px solid #e3d9d6;border-radius:18px;padding:24px 27px;margin:24px 0 0;background:var(--card,#fff)}
+.reset-zone h2{font-size:22px;margin:5px 0 10px}
+.reset-zone p{color:var(--muted,#526876);font-size:14px;line-height:1.5}
+.reset-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.reset-options>div{border:1px solid #e2e6e7;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:start;gap:6px}
+.reset-options strong{font-size:15px}
+.reset-options p{flex:1;margin:4px 0 10px}
+.btn-danger-reset{color:#a12d32;border:1px solid #bf5558;background:#fff}
+.btn-danger-reset:hover:not(:disabled){background:#fff0f0;border-color:#a12d32}
+.btn-danger-reset:disabled{opacity:.45;cursor:not-allowed}
+.reset-dialog{width:min(95vw,510px);border:1px solid #e2e6e7;border-radius:18px;box-shadow:0 25px 80px #102c3d55;padding:0;background:white;color:#142d38}
+.reset-dialog::backdrop{background:rgba(13,33,46,.55)}
+.reset-dialog .dialog-body{padding:20px 26px}
+.reset-dialog .dialog-actions{padding:14px 26px 20px;display:flex;justify-content:end;gap:12px}
+@media(max-width:640px){.reset-options{grid-template-columns:1fr}.reset-zone{padding:18px}}
