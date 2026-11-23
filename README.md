@@ -1,60 +1,33 @@
-# Deutsch Trainer 1.1 — lekcie a cielené precvičovanie
+# Deutsch Trainer 1.3 – učenie opakovaním, vlastný tréning a štatistiky
 
-Aktualizovaná verzia pôvodnej aplikácie Deutsch Trainer 1.0. **Najprv si v starej aplikácii stiahni zálohu** (Import a zálohy → Export celej databázy). Nová verzia zachováva rovnakú databázu IndexedDB: `deutsch-trainer-v1`, jej verziu 1, aj formát importu/exportu JSON verzie 1.
+## Čo je nové
 
-## Čo sa zmenilo vo verzii 1.1
+- **Učenie opakovaním**: voľba lekcie, typov slovíčok a dĺžky tréningu (5/10/15/20). Strieda sa DE→SK, SK→DE, dopĺňanie chýbajúceho slova do frázy a občasné slovesné časy. Pri chybe sa otázka vráti ešte počas toho istého kola.
+- **Rozložené opakovanie**: úspechy sa ukladajú podľa slova **aj smeru/typu otázky**. Úspešné odpovede plánujeme znovu približne o 1, 3, 7, 14, 30 a 60 dní. Chybné odpovede plánujeme na skoršie opakovanie; pri najbližšom učení sa uprednostnia otázky, ktorým práve uplynul termín. Toto je vlastný jednoduchý algoritmus, nie oficiálny algoritmus Duolingo.
+- **Vlastný tréning** zostáva zachovaný: lekcia, typ učiva, smer, počet otázok aj gramatické režimy.
+- **Štatistiky**: dnes, posledných 7 dní, úspešnosť, nové slová, séria dní, osvojené slová, opakovanie a problematické slová. „Nové“ znamená prvýkrát precvičené položky; „osvojené“ znamená aspoň 3 po sebe správne odpovede z určitého typu otázky a úspechy aspoň počas 2 rôznych dní.
+- Nové tlačidlo **Obnoviť aplikáciu ↻** aktualizuje súbory webu, neodstraňuje lokálnu databázu.
 
-- Pred tréningom si vyberieš **konkrétnu lekciu** alebo všetky lekcie. V menu sa zobrazia len lekcie, ktoré už naozaj máš v slovníku.
-- Samostatne môžeš zapnúť/vypnúť 4 druhy učiva: **podstatné mená**, **ostatné slovíčka**, **slovesá** a **frázy/vety**. Môžeš kombinovať viac druhov.
-- Vieš obmedziť učivo aj podľa **témy (kategórie)** a **časti A/B/C/D** z učebnice, ak import obsahuje príslušné tagy.
-- Vyberieš si typ otázky (preklad, členy, množné číslo, Präteritum, Perfekt alebo mix), odpovedanie (písanie/kartičky), počet otázok (5/10/20/30/50) a plán opakovania.
-- Ešte **pred spustením** aplikácia ukáže počet vhodných položiek a otázok. Ak sa nastavenia nedajú precvičiť (napr. Perfekt len z podstatných mien), nedovolí spustiť prázdny tréning.
-- **Môj slovník** má filter lekcií aj tém; zobrazuje najprv 45 záznamov a ďalšie načíta po kliknutí. Nemusíš listovať všetkých 758 naraz.
-- Pri vytváraní alebo úprave záznamu pribudlo pole **Učebnica / lekcia** s nápovedou už známych lekcií. Pri ďalšom importe sa lekcie ponúknu automaticky.
-- Kliknutie na **Spustiť tréning** na domovskej obrazovke už nespúšťa automaticky náhodné otázky: otvorí nastavenie, kde si vyberieš učivo.
+## Ako bezpečne aktualizovať z verzie 1.0 / 1.1 / 1.2
 
-## Príklad: lekcia 1 — slovesá — Perfekt — 10 otázok
+1. V tvojej starej stránke otvor **Import a zálohy → Stiahnuť kompletnú zálohu JSON**. Odlož súbor mimo verejného GitHubu.
+2. Rozbaľ celý ZIP **Deutsch Trainer 1.3**.
+3. Otvor správny GitHub repozitár a **NAHRAĎ VŠETKY SÚBORY V KORENI PUBLIKOVANÉHO PRIEČINKA**, nie do podpriečinka `deutsch-trainer-v1.3`. Nahraj: `index.html`, `styles.css`, `app.js`, **`spaced.js` (nový)**, `sw.js`, `manifest.webmanifest`, `ukazkove-slovicka.json`, `.nojekyll` a priečinok `icons` (ikonky zvyčajne môžeš ponechať). Ak GitHub Pages používa vetvu `main` a `/ (root)`, v repozitári musí byť `index.html` priamo pri koreni, nie napríklad v `deutsch-trainer-v1.3/index.html`.
+4. Otvor v GitHube **Settings → Pages** a skontroluj, z ktorej vetvy a priečinka sa stránka publikuje. Pri nasadení cez Actions pozri **Actions**, či posledné nasadenie prešlo.
+5. Otvor svoju adresu s `?test=130` pripojeným za koniec cesty pred `#` (napr. `https://pouzivatel.github.io/deutsch-trainer/?test=130`). Zobrazená verzia v hornej časti musí byť **v1.3**.
+6. Ak vidíš starú verziu, obnov stránku `Ctrl+Shift+R` alebo v Chrome/Edge: F12 → Application → Service Workers → **Unregister** (len Service Worker), a v Cache Storage odstráň iba `deutsch-trainer-static-*` cache, potom obnov. **NIKDY neklikaj na Clear site data / Vymazať údaje stránky, ak nemáš zálohu.** Môže to vymazať IndexedDB vrátane slovíčok.
+7. Pri nezmenenej URL, rovnakom prehliadači a profile sa používajú tie isté údaje v IndexedDB `deutsch-trainer-v1`. Návrat k staršej verzii aplikácie nie je potrebný.
 
-1. Otvor **Precvičovanie**.
-2. V poli **Učebnica / lekcia** vyber **Lekcia 1 · Ausbildung und Tätigkeiten**.
-3. Zaškrtni **Slovesá** a odškrtni zvyšné druhy.
-4. V poli **Typ otázok** vyber **Perfekt**.
-5. Nechaj **Počet otázok: 10** a klikni **Začať precvičovanie**.
+**Dôležité:** `DB_VERSION = 1` vo vnútri zdrojového kódu je *verzia databázovej schémy*, nie verzia aplikácie. Nápis v záhlaví `v1.3` patrí verzii používateľského rozhrania.
 
-Alebo zaškrtni iba **Frázy a vety** a nastav **Preklady do nemčiny**. Z lekcie môžeš vyberať aj menšie témy, napríklad „Škola a vzdelávanie“ alebo „Denný režim“.
+## Príklad učenia
 
-## Ako aktualizovať už nainštalovanú webovú aplikáciu
+**Učenie opakovaním → Lekcia 1 → Slovesá + Podstatné mená + Frázy → 10 otázok.** Aplikácia vyberie najskôr slová na opakovanie, potom zopár nových; nasledujú otázky `der Beruf` → `povolanie`, `povolanie` → `der Beruf` a prípadne veta s chýbajúcim slovom. Po zlej odpovedi sa rovnaká otázka zaradí ešte do aktuálneho kola a znovu na neskoršie opakovanie.
 
-1. V starej aplikácii klikni **Import a zálohy → Stiahnuť kompletnú zálohu JSON** a súbor bezpečne odlož.
-2. Na GitHube otvor **ten istý** repozitár, cez ktorý máš zverejnenú starú aplikáciu.
-3. Nahraj z rozbaleného ZIP-u súbory **index.html, app.js, styles.css, sw.js, README.md** a potvrď **nahradenie existujúcich súborov**. Ostatné súbory ostávajú rovnaké. Názvy a cesty sú dôležité.
-4. Po publikovaní znovu otvor **tú istú URL GitHub Pages**. Ak by sa ti stále zobrazovala verzia 1.0, obnov stránku pomocou `Ctrl + Shift + R`, prípadne aplikáciu zavri a znovu otvor. Service Worker má nové číslo cache.
-5. Skontroluj sekciu **Môj slovník**. Existujúce záznamy aj história by sa mali načítať automaticky, pokiaľ používaš **rovnakú adresu, prehliadač a jeho profil**. **Nenahrávaj zálohu na verejný GitHub.**
+## Údaje, offline a obmedzenia
 
-Ak používaš program lokálne, stačí v tom istom priečinku nahradiť uvedené súbory a spustiť `python -m http.server 8000` (na Windows aj `py -m http.server 8000`). Ak si aplikáciu presunul na inú adresu/origin, databáza sa automaticky neprenesie: vtedy si do novej inštalácie importuj súkromnú zálohu.
-
-**Dôležité:** Ak si už naimportoval 758 záznamov z prvej lekcie, **nemusíš ich importovať znova** — nová verzia ich iba filtruje. Ak ešte nie, použi predchádzajúci JSON súbor (formát sa nemení).
-
-## Pridávanie lekcií cez ChatGPT
-
-Pri novom JSON súbore nechaj každému záznamu vyplniť pole `lesson`, napríklad:
-
-```json
-{"format":"deutsch-trainer","version":1,"entries":[
-  {"type":"noun","de":"Hobby","sk":"záľuba","article":"das","plural":"die Hobbys","lesson":"Begegnungen A2+ – Lekcia 2","tags":["Voľný čas"]},
-  {"type":"verb","de":"lesen","sk":"čítať","preterite":"las","perfect":"hat gelesen","auxiliary":"haben","lesson":"Begegnungen A2+ – Lekcia 2","tags":["Voľný čas"]}
-]}
-```
-
-Aplikácia rozpozná aj varianty `Begegnungen A2+ (3. vydanie) – Lekcia 1` či `Lekcia 1` a zaradí ich spolu do tej istej lekcie. Záznamy bez priradenej lekcie uvidíš pod **Bez priradenej lekcie**. Odlišné učebnice s rovnakým číslom lekcie zatiaľ neoddeľuje (táto verzia je pripravená primárne pre Begegnungen A2+).
-
-Import: **Import a zálohy → Vybrať súbor → Skontrolovať import → Potvrdiť import**. Import ignoruje duplicitné kombinácie typu a nemeckého základného tvaru a uchováva existujúce výsledky. Ak sa to isté slovo objaví vo viacerých lekciách, verzia 1.1 uloží ďalšie priradenia do voliteľného poľa `lessons` (pole reťazcov). Udržuje jediný slovníkový záznam a existujúci progres. Pri importe ďalšej lekcie ho automaticky zaradí aj do jej výberu. Pri zálohe cez 1.1 sa toto pole exportuje. Import zálohy do staršej 1.0 nie je vhodný, lebo 1.0 pole `lessons` nepozná.
-
-## Technické detaily a obmedzenia
-
-- Statická PWA pre PC/mobil, bez servera, bez plateného API.
-- `IndexedDB` drží slovník a pokrok v danom prehliadači. GitHub Pages poskytuje len súbory aplikácie.
-- Žiadna synchronizácia PC a mobilu: na presun používaš import/export súkromnej zálohy JSON.
-- Tréningový mix môže obsahovať niekoľko druhov úloh z jednej položky; hodnotenie opakovania je stále na úrovni záznamu, nie na úrovni jednotlivých gramatických tvarov.
-- Porovnávanie napísaných odpovedí rozlišuje nemecké umlauty a ß. Voľné synonymá musia byť uložené ako alternatívne odpovede.
-- `lesson` je nepovinný text a `tags` je pole vlastných kategórií; časti A–D sa vyhodnotia iba pri záznamoch, ktoré takéto tagy obsahujú.
+- Slovník aj história odpovedí zostávajú **len v tomto prehliadači**. PC a telefón sa bez synchronizačného servera neprepoja.
+- JSON formát je stále `{"format":"deutsch-trainer","version":1,"entries":[...]}` a je kompatibilný s predchádzajúcimi verziami. Zálohy z 1.0–1.2 sa importujú. História odpovedí a už uložené jednoduché opakovanie sa zachovajú; nové plánovanie osobitne pre každý smer sa buduje z nových odpovedí verzie 1.3.
+- Textové hodnotenie uznáva uvedené preklady a základné alternatívy, nie všetky možné synonymá alebo gramaticky prípustné formulácie. V prípade chybného vyhodnotenia doplň `alternatives` do JSON pri importe.
+- Nie sú tu push notifikácie ani umelá inteligencia hodnotiaca voľný text. Termíny opakovania sa prejavia pri najbližšom spustení aplikácie.
+- Pri zmene domény, protokolu alebo profilu prehliadača treba obnoviť dáta z exportovanej zálohy.

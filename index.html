@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="application-name" content="Deutsch Trainer 1.3">
   <meta name="theme-color" content="#122d3d">
   <meta name="description" content="Deutsch Trainer – osobný slovník a precvičovanie nemčiny.">
   <title>Deutsch Trainer · Tvoja nemčina</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
-  <link rel="stylesheet" href="./styles.css">
-  <script src="./app.js" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=1.3.0">
+  <script src="./spaced.js?v=1.3.0" defer></script>
+  <script src="./app.js?v=1.3.0" defer></script>
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -22,47 +24,50 @@
       <nav class="main-nav" aria-label="Hlavné menu">
         <button class="nav-link active" data-page="domov"><span class="nav-icon">⌂</span> Prehľad</button>
         <button class="nav-link" data-page="slovnik"><span class="nav-icon">▤</span> Môj slovník</button>
-        <button class="nav-link" data-page="trening"><span class="nav-icon">◇</span> Precvičovanie</button>
+        <button class="nav-link" data-page="ucenie"><span class="nav-icon">✳</span> Učenie opakovaním</button>
+        <button class="nav-link" data-page="trening"><span class="nav-icon">◇</span> Vlastný tréning</button>
+        <button class="nav-link" data-page="statistiky"><span class="nav-icon">▥</span> Štatistiky</button>
         <button class="nav-link" data-page="import"><span class="nav-icon">⇅</span> Import a zálohy</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="tip-card"><span class="tip-icon">✦</span><strong>Malý krok každý deň</strong><p>Aj 10 minút pravidelného precvičovania posunie tvoju nemčinu ďalej.</p></div>
-        <span class="version">VERZIA 1.1 · výber lekcií</span>
+        <span class="version">VERZIA 1.3 · učenie opakovaním</span>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div class="breadcrumb" id="breadcrumb">Osobná učebnica <span>/</span> Prehľad</div>
-        <div class="topbar-actions"><span class="local-pill"><span class="dot"></span> Ukladá sa v prehliadači</span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
+        <div class="topbar-actions"><span class="release-pill" aria-label="Verzia aplikácie">v1.3</span> <button class="version-refresh" type="button" id="refreshVersionBtn" title="Stiahnuť najnovšiu verziu webových súborov; údaje v slovníku sa nemažú">Obnoviť aplikáciu ↻</button><span class="local-pill"><span class="dot"></span> Ukladá sa v prehliadači</span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
       </header>
       <div class="content-body">
         <div id="notice" role="status" aria-live="polite" class="notice hidden"></div>
         <section class="page active" id="page-domov" aria-label="Prehľad">
           <div class="eyebrow">TVÔJ ŠTUDIJNÝ PRIESTOR</div>
           <h1>Guten Morgen <span class="heading-star">✳</span></h1>
-          <p class="page-lead">Tvoja nemčina rozdelená podľa lekcií, slovných druhov a tém. Trénuj len to, čo potrebuješ.</p>
+          <p class="page-lead">Dnes si osvojíš niekoľko nových výrazov a zopakuješ tie, ktoré by si už mohol zabudnúť.</p>
           <div class="stats-grid">
             <div class="stat-card"><div class="stat-top"><span>Slovíčka a frázy</span><span class="stat-symbol">▤</span></div><strong id="statEntries">0</strong><small>Záznamov v tvojej knižnici</small></div>
             <div class="stat-card"><div class="stat-top"><span>Na opakovanie</span><span class="stat-symbol">↻</span></div><strong id="statDue">0</strong><small>Nové alebo pripravené na tréning</small></div>
             <div class="stat-card"><div class="stat-top"><span>Úspešnosť</span><span class="stat-symbol">◎</span></div><strong id="statAccuracy">—</strong><small>Zo všetkých odpovedí</small></div>
           </div>
+          <div class="daily-pulse" id="dailyPulse"><div><span class="eyebrow">DNES</span><strong id="homeTodayCount">0 otázok</strong><small>z denného cieľa 15 odpovedí</small></div><div class="pulse-progress"><span id="dailyPulseBar"></span></div><div><strong id="homeLearnedToday">0</strong><small>Prvýkrát precvičených slovíčok</small></div><div><strong id="homeDayStreak">0 dní</strong><small>Aktívna séria učenia</small></div></div>
           <div class="dashboard-grid">
             <div class="feature-card gradient-card">
-              <div class="eyebrow light">TVOJ NASLEDUJÚCI KROK</div>
-              <h2>Precvičme si<br>nemčinu.</h2>
-              <p>Vyber si lekciu, slovesá, slovíčka alebo frázy. Počet otázok si určíš sám.</p>
-              <button class="btn btn-white" id="startQuickBtn">Spustiť tréning <span>→</span></button>
+              <div class="eyebrow light">INTELIGENTNÉ OPAKOVANIE</div>
+              <h2>Moje denné<br>Duolingo.</h2>
+              <p>Preklady oboma smermi, dopĺňanie fráz a návrat k slovám, ktoré ti ešte nejdú.</p>
+              <button class="btn btn-white" id="startDuolingoHome">Spustiť učenie <span>→</span></button>
               <span class="decorative-spark">✳</span>
             </div>
             <div class="feature-card neutral-card">
               <div class="eyebrow">RÝCHLY IMPORT</div>
-              <h2>Nové slová<br>z ChatGPT?</h2>
-              <p>Vlož JSON, ktorý ti pripraví ChatGPT. Nové slová sa pridajú, existujúce výsledky ostanú zachované.</p>
-              <button class="btn btn-outline" id="openImportBtn">Otvoriť import <span>→</span></button>
+              <h2>Vlastný tréning<br>a import.</h2>
+              <p>Vyber si lekciu, slovíčka, frázy či slovesá a ľubovoľný počet otázok. Alebo pridaj nové učivo.</p>
+              <button class="btn btn-outline" id="startQuickBtn">Nastaviť tréning <span>→</span></button>
             </div>
           </div>
-          <div class="section-head"><div><h2>Čo už máš v slovníku</h2><p>Prehľad tvojich študijných materiálov</p></div><button class="text-action" id="allEntriesBtn">Celý slovník →</button></div>
+          <div class="shortcut-link"><button class="text-action" id="openImportBtn">Importovať nové slovíčka →</button></div><div class="section-head"><div><h2>Čo už máš v slovníku</h2><p>Prehľad tvojich študijných materiálov</p></div><button class="text-action" id="allEntriesBtn">Celý slovník →</button></div>
           <div class="category-grid" id="homeCategories"></div>
           <div class="empty-home" id="homeEmpty" hidden><div class="empty-illustration">✎</div><strong>Začni prvým slovíčkom</strong><p>Pridaj vlastný záznam alebo načítaj pripravené ukážkové dáta.</p><div class="row-actions"><button class="btn btn-primary" id="homeAddBtn">+ Nové slovíčko</button><button class="btn btn-outline" id="homeDemoBtn">Načítať ukážky</button></div></div>
         </section>
@@ -74,31 +79,91 @@
           <div id="entryList" class="entry-list"></div><div class="library-more-row"><button class="btn btn-outline hidden" id="loadMoreEntriesBtn">Zobraziť ďalšie záznamy ↓</button></div>
         </section>
 
-        <section class="page" id="page-trening" aria-label="Precvičovanie">
-          <div class="eyebrow">UČENIE PRAXOU</div><h1>Precvičovanie</h1><p class="page-lead">Učenie je najúčinnejšie, keď odpoveď vytvoríš sám.</p>
-          <div id="practiceSetup" class="practice-setup">
-            <div class="setup-card"><h2>Nastavenie tréningu</h2><p>Nezačínaj celou databázou. Vyber konkrétnu lekciu a len tie druhy učiva, ktoré chceš práve trénovať.</p>
-              <div class="setup-section"><div class="step-title"><span class="step-number">1</span><strong>Zvoľ lekciu</strong></div><label class="field"><span>Učebnica / lekcia</span><select id="practiceLesson"><option value="all">Všetky lekcie</option></select></label></div>
-              <div class="setup-section"><div class="step-title"><span class="step-number">2</span><strong>Vyber obsah</strong><small>Môžeš zvoliť viac druhov naraz</small></div>
-                <div class="type-choices" id="practiceTypeChoices">
-                  <label class="type-choice"><input type="checkbox" name="studyType" value="noun" checked><span><strong>Podstatné mená</strong><small>Členy, preklad, množné číslo</small></span><em id="countNoun">0</em></label>
-                  <label class="type-choice"><input type="checkbox" name="studyType" value="other" checked><span><strong>Ostatné slovíčka</strong><small>Prídavné mená, príslovky…</small></span><em id="countOther">0</em></label>
-                  <label class="type-choice"><input type="checkbox" name="studyType" value="verb"><span><strong>Slovesá</strong><small>Preklad, Präteritum, Perfekt</small></span><em id="countVerb">0</em></label>
-                  <label class="type-choice"><input type="checkbox" name="studyType" value="phrase"><span><strong>Frázy a vety</strong><small>Celé užitočné spojenia</small></span><em id="countPhrase">0</em></label>
+        <section class="page" id="page-ucenie" aria-label="Učenie opakovaním">
+          <div class="eyebrow">TVÔJ KAŽDODENNÝ TRÉNING</div><h1>Učenie opakovaním <span class="heading-star">✳</span></h1>
+          <p class="page-lead">Podobne ako v Duolingu: prekladáš oboma smermi, dopĺňaš slová vo vetách a opakuješ chyby. Otázky vyberá aplikácia podľa toho, čo už ovládaš.</p>
+          <div class="practice-setup duo-setup">
+            <div class="setup-card">
+              <div class="step-eyebrow">UČENIE · PRIPRAV SI DNEŠNÉ KOLO</div>
+              <div class="setup-section"><div class="step-title"><span class="step-number">1</span><strong>Učivo, z ktorého sa mám učiť</strong></div>
+                <label class="field"><span>Vyber lekciu</span><select id="studyLesson"><option value="all">Všetky lekcie</option></select></label>
+                <div class="study-types"><label><input id="studyNouns" type="checkbox" checked> Podstatné mená</label><label><input id="studyVerbs" type="checkbox" checked> Slovesá</label><label><input id="studyPhrases" type="checkbox" checked> Frázy a vety</label><label><input id="studyOthers" type="checkbox" checked> Ostatné slová</label></div>
+              </div>
+              <div class="setup-section"><div class="step-title"><span class="step-number">2</span><strong>Dĺžka tréningu</strong></div>
+                <div class="study-counts"><label><input type="radio" name="studyCount" value="5"> 5 otázok</label><label><input type="radio" name="studyCount" value="10" checked> 10 otázok</label><label><input type="radio" name="studyCount" value="15"> 15 otázok</label><label><input type="radio" name="studyCount" value="20"> 20 otázok</label></div>
+              </div>
+              <div class="selection-summary" id="duoPreview">Načítavam učivo…</div>
+              <button class="btn btn-primary btn-large begin-training" id="beginDuoBtn">Začať učenie opakovaním →</button>
+            </div>
+            <aside class="setup-aside"><span class="big-glyph">↻</span><h3>Vráti sa to, čo potrebuješ.</h3>
+              <p>Nové slová sa naučíš najprv po nemecky a potom aj opačným smerom. Nesprávne odpovede sa vrátia ešte počas kola.</p>
+              <p><strong>Kedy sa vrátia?</strong> Po správnej odpovedi približne o 1, 3, 7, 14 alebo viac dní. Po chybe skôr.</p>
+              <div class="aside-stat" id="duoDueCount"></div>
+            </aside>
+          </div>
+        </section>
+        <section class="page" id="page-trening" aria-label="Vlastný tréning">
+          <div class="eyebrow">PRECVIČOVANIE PODĽA VÝBERU</div><h1>Vlastný tréning</h1><p class="page-lead">Najprv si nastav lekciu, obsah, smer prekladu a počet otázok.</p>
+<div id="practiceSetup" class="practice-setup">
+            <div class="setup-card">
+              <div class="eyebrow">NAJPRV NASTAV, POTOM SPUSŤ</div>
+              <h2>Čo si chceš precvičiť?</h2>
+              <p>Tréning sa spustí až po kliknutí na „Začať môj tréning“. Predvolené je nemecké slovo s členom → napísať slovenský význam.</p>
+              <div class="setup-section">
+                <div class="step-title"><span class="step-number">1</span><strong>Ktorá lekcia?</strong></div>
+                <label class="field"><span>Učebnica / lekcia</span><select id="practiceLesson"><option value="all">Všetky lekcie</option></select></label>
+              </div>
+              <div class="setup-section">
+                <div class="step-title"><span class="step-number">2</span><strong>Čo chceš trénovať?</strong><small>Vyber jednu možnosť</small></div>
+                <div class="type-choices type-choice-grid" id="practiceTypeChoices">
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="words" checked><span><strong>Slovíčka</strong><small>Podstatné mená + ostatné slová</small></span><em id="countWords">0</em></label>
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="noun"><span><strong>Podstatné mená</strong><small>Aj s členom der / die / das</small></span><em id="countNoun">0</em></label>
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="verb"><span><strong>Slovesá</strong><small>Významy a voliteľne časy</small></span><em id="countVerb">0</em></label>
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="phrase"><span><strong>Frázy a vety</strong><small>Užitočné spojenia a vety</small></span><em id="countPhrase">0</em></label>
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="other"><span><strong>Ostatné slová</strong><small>Prídavné mená, príslovky...</small></span><em id="countOther">0</em></label>
+                  <label class="type-choice"><input type="radio" name="studyCategory" value="all"><span><strong>Všetko</strong><small>Všetky typy záznamov</small></span><em id="countAll">0</em></label>
                 </div>
-                <div class="quick-type-actions"><button type="button" class="text-action" id="selectAllTypesBtn">Vybrať všetko</button><button type="button" class="text-action" id="clearTypesBtn">Zrušiť výber</button></div>
               </div>
-              <div class="setup-section"><div class="step-title"><span class="step-number">3</span><strong>Spresni tréning</strong><small>Voliteľné filtre</small></div>
-                <div class="form-grid"><label class="field"><span>Téma</span><select id="practiceTopic"><option value="all">Všetky témy</option></select></label><label class="field"><span>Časť učebnice</span><select id="practiceSection"><option value="all">Všetky časti A–D</option><option value="A">A · Témy a úlohy</option><option value="B">B · Voliteľné učivo</option><option value="C">C · Gramatika a cvičenia</option><option value="D">D · Opakovanie</option></select></label>
-                <label class="field"><span>Typ otázok</span><select id="practiceKind"><option value="mix">Zmiešané precvičovanie</option><option value="translation">Preklady do nemčiny</option><option value="article">Členy (der, die, das)</option><option value="plural">Množné číslo</option><option value="preterite">Präteritum</option><option value="perfect">Perfekt</option></select></label><label class="field"><span>Spôsob odpovedania</span><select id="practiceMode"><option value="type">Napísať odpoveď</option><option value="card">Kartičky – otočiť a hodnotiť</option></select></label><label class="field"><span>Počet otázok</span><select id="practiceCount"><option value="5">5 otázok</option><option value="10" selected>10 otázok</option><option value="20">20 otázok</option><option value="30">30 otázok</option><option value="50">50 otázok</option></select></label><label class="field"><span>Výber podľa opakovania</span><select id="practiceScope"><option value="all">Všetky vybrané záznamy</option><option value="due">Len pripravené na opakovanie</option><option value="wrong">Len problematické slová</option></select></label></div>
+              <div class="setup-section">
+                <div class="step-title"><span class="step-number">3</span><strong>Aký typ otázok?</strong></div>
+                <label class="field"><span>Smer prekladu / gramatika</span>
+                  <select id="practiceKind">
+                    <option value="de_to_sk" selected>Nemčina → slovenčina (odporúčané)</option>
+                    <option value="sk_to_de">Slovenčina → nemčina</option>
+                    <option value="both">Striedať oba smery prekladu</option>
+                    <option value="preterite">Präteritum (iba slovesá)</option>
+                    <option value="perfect">Perfekt (iba slovesá)</option>
+                    <option value="article">Hádať členy (iba podstatné mená)</option>
+                    <option value="plural">Množné číslo (iba podstatné mená)</option>
+                    <option value="grammar_mix">Zmiešaná gramatika (voliteľne)</option>
+                  </select>
+                </label>
+                <div class="example-hint"><strong>Ukážka:</strong> <span id="practicePreviewExample">der Beruf → [napíšeš po slovensky: povolanie]</span></div>
               </div>
+              <div class="setup-section">
+                <div class="step-title"><span class="step-number">4</span><strong>Koľko otázok?</strong></div>
+                <div class="count-controls">
+                  <label class="field"><span>Počet otázok (ľubovoľné číslo)</span><input id="practiceCount" type="number" min="1" max="10000" step="1" value="10" inputmode="numeric"></label>
+                  <label class="all-toggle"><input type="checkbox" id="practiceAll"> Precvičiť všetky vybrané položky</label>
+                </div>
+                <div class="preset-counts" aria-label="Rýchla voľba počtu otázok"><button type="button" data-count="5">5</button><button type="button" data-count="10">10</button><button type="button" data-count="20">20</button><button type="button" data-count="50">50</button></div>
+              </div>
+              <details class="extra-filters"><summary>Ďalšie nastavenia – téma, časť učebnice, opakovanie</summary>
+                <div class="form-grid">
+                  <label class="field"><span>Téma</span><select id="practiceTopic"><option value="all">Všetky témy</option></select></label>
+                  <label class="field"><span>Časť učebnice</span><select id="practiceSection"><option value="all">Všetky časti A–D</option><option value="A">A · Témy a úlohy</option><option value="B">B · Voliteľné učivo</option><option value="C">C · Gramatika a cvičenia</option><option value="D">D · Opakovanie</option></select></label>
+                  <label class="field"><span>Odpovedanie</span><select id="practiceMode"><option value="type">Napísať odpoveď</option><option value="card">Kartička – odkryť odpoveď</option></select></label>
+                  <label class="field"><span>Výber záznamov</span><select id="practiceScope"><option value="all">Všetky vybrané záznamy</option><option value="due">Na opakovanie</option><option value="wrong">Problematické slová</option></select></label>
+                </div>
+              </details>
               <div class="selection-summary" id="practiceSelectionInfo" role="status" aria-live="polite"></div>
-              <button class="btn btn-primary btn-large" id="beginPracticeBtn">Začať precvičovanie →</button>
+              <button class="btn btn-primary btn-large begin-training" id="beginPracticeBtn">Začať môj tréning →</button>
             </div>
             <aside class="setup-aside"><span class="big-glyph">✳</span><h3>Čím častejšie cvičíš, tým viac vieš.</h3><p>Pri každom zázname sa sledujú odpovede. Nesprávne zodpovedané slová sa vracajú skôr.</p><div id="quizAvailable" class="aside-stat"></div><p class="aside-note">Filtre nemenia ani nemažú slovník. Vyberajú iba otázky do jedného tréningu.</p></aside>
           </div>
           <div id="practiceActive" class="practice-active hidden" aria-live="polite">
-            <div class="practice-top"><button class="text-action" id="quitPracticeBtn">← Späť na nastavenia</button><span id="practiceProgressLabel">Otázka 1 / 10</span></div><div class="progress"><div id="progressBar"></div></div>
+            <div class="practice-top"><button class="text-action" id="quitPracticeBtn">← Späť</button><span id="practiceProgressLabel">Otázka 1 / 10</span></div>
+            <div id="duoActiveHint" class="duo-active-hint hidden">✳ Učenie opakovaním · otázky sa prispôsobujú tvojim výsledkom</div><div class="progress"><div id="progressBar"></div></div>
             <div class="question-card"><div class="question-type" id="questionType">PREKLAD</div><h2 id="questionPrompt"></h2><div id="questionContext"></div>
               <div id="typedAnswerBox"><label for="answerInput" class="field-label">Tvoja odpoveď</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Napíš odpoveď..."><button class="btn btn-primary btn-large" id="checkAnswerBtn">Skontrolovať</button></div>
               <div id="flashcardAnswerBox" class="hidden"><button class="flashcard-reveal" id="revealAnswerBtn">Klikni a odhaľ správnu odpoveď <span>↻</span></button></div>
@@ -110,6 +175,22 @@
           <div id="practiceFinished" class="finished-card hidden"><span class="big-glyph">✳</span><div class="eyebrow">HOTOVO</div><h2>Výborne, tréning je za tebou!</h2><p id="practiceSummary"></p><div class="row-actions center"><button class="btn btn-primary" id="practiceAgainBtn">Precvičiť znova</button><button class="btn btn-outline" id="practiceHomeBtn">Späť na prehľad</button></div></div>
         </section>
 
+        <section class="page" id="page-statistiky" aria-label="Štatistiky učenia">
+          <div class="eyebrow">MOJE VÝSLEDKY</div><h1>Štatistiky a pokrok</h1>
+          <p class="page-lead">Prehľad skutočných odpovedí uložených v tvojom prehliadači. Nové slovo znamená prvé precvičenie; osvojené slovo vyžaduje opakované úspechy.</p>
+          <div class="stats-grid stats-extra">
+            <div class="stat-card"><div class="stat-top"><span>Dnes otázok</span></div><strong id="statsToday">0</strong><small id="statsTodayAccuracy">Úspešnosť —</small></div>
+            <div class="stat-card"><div class="stat-top"><span>Posledných 7 dní</span></div><strong id="statsWeek">0</strong><small id="statsWeekAccuracy">Úspešnosť —</small></div>
+            <div class="stat-card"><div class="stat-top"><span>Osvojené</span></div><strong id="statsMastered">0</strong><small>Opakovane správne počas viacerých dní</small></div>
+          </div>
+          <div class="stats-grid stats-extra">
+            <div class="stat-card"><div class="stat-top"><span>Nové dnes</span></div><strong id="statsNewToday">0</strong><small>Prvýkrát precvičené položky</small></div>
+            <div class="stat-card"><div class="stat-top"><span>Nové za 7 dní</span></div><strong id="statsNewWeek">0</strong><small>Prvýkrát precvičené položky</small></div>
+            <div class="stat-card"><div class="stat-top"><span>Na opakovanie</span></div><strong id="statsDue">0</strong><small>Už preberané, termín opakovania nastal</small></div>
+          </div>
+          <div class="stats-chart-card"><h2>Posledných 7 dní</h2><p class="muted-small">Počet zodpovedaných otázok podľa dňa. Opakovaná otázka sa počíta znovu.</p><div id="statsChart" class="weekly-chart"></div></div>
+          <div class="stats-chart-card"><h2>Čo potrebuješ ešte trénovať</h2><p class="muted-small">Najčastejšie nesprávne odpovede za všetky tréningy.</p><div id="statsHardWords" class="hard-word-list"></div></div>
+        </section>
         <section class="page" id="page-import" aria-label="Import a zálohy">
           <div class="eyebrow">PRENOS DÁT</div><h1>Import a zálohy</h1><p class="page-lead">Pridávaj slová cez ChatGPT a bezpečne si uchovaj svoju osobnú databázu.</p>
           <div class="import-grid">
