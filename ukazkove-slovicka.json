@@ -1,0 +1,30 @@
+{
+  "format": "deutsch-trainer",
+  "version": 1,
+  "entries": [
+    {"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb","Nepravidelné slovesá"],"exampleDe":"Ich bin gestern zum Arzt gegangen.","exampleSk":"Včera som išiel k lekárovi."},
+    {"type":"verb","de":"fahren","sk":"ísť / cestovať dopravným prostriedkom","preterite":"fuhr","perfect":"ist gefahren","auxiliary":"sein","level":"A1","tags":["Pohyb","Nepravidelné slovesá"],"exampleDe":"Ich bin mit dem Zug gefahren.","exampleSk":"Išiel som vlakom."},
+    {"type":"verb","de":"verlieren","sk":"stratiť / prehrať","preterite":"verlor","perfect":"hat verloren","auxiliary":"haben","level":"A2","tags":["Nepravidelné slovesá"],"exampleDe":"Ich habe meinen Schlüssel verloren.","exampleSk":"Stratil som kľúč."},
+    {"type":"verb","de":"umziehen","sk":"presťahovať sa","preterite":"zog um","perfect":"ist umgezogen","auxiliary":"sein","level":"A2","tags":["Odlučiteľné slovesá"],"notes":"Pri význame prezliecť sa: sich umziehen – hat sich umgezogen.","exampleDe":"Wir sind letztes Jahr umgezogen.","exampleSk":"Minulý rok sme sa presťahovali."},
+    {"type":"verb","de":"lesen","sk":"čítať","preterite":"las","perfect":"hat gelesen","auxiliary":"haben","level":"A1","tags":["Nepravidelné slovesá"],"exampleDe":"Ich habe ein Buch gelesen.","exampleSk":"Prečítal som knihu."},
+    {"type":"verb","de":"sehen","sk":"vidieť","preterite":"sah","perfect":"hat gesehen","auxiliary":"haben","level":"A1","tags":["Nepravidelné slovesá"],"exampleDe":"Wir haben einen Film gesehen.","exampleSk":"Pozreli sme si film."},
+    {"type":"verb","de":"machen","sk":"robiť","preterite":"machte","perfect":"hat gemacht","auxiliary":"haben","level":"A1","tags":["Pravidelné slovesá"],"exampleDe":"Was hast du gestern gemacht?","exampleSk":"Čo si robil včera?"},
+    {"type":"verb","de":"lernen","sk":"učiť sa","preterite":"lernte","perfect":"hat gelernt","auxiliary":"haben","level":"A1","tags":["Pravidelné slovesá"],"exampleDe":"Ich habe Deutsch gelernt.","exampleSk":"Učil som sa nemčinu."},
+    {"type":"verb","de":"sein","sk":"byť","preterite":"war","perfect":"ist gewesen","auxiliary":"sein","level":"A1","tags":["Nepravidelné slovesá"],"exampleDe":"Ich war gestern zu Hause.","exampleSk":"Včera som bol doma."},
+    {"type":"verb","de":"haben","sk":"mať","preterite":"hatte","perfect":"hat gehabt","auxiliary":"haben","level":"A1","tags":["Nepravidelné slovesá"],"exampleDe":"Ich hatte keine Zeit.","exampleSk":"Nemal som čas."},
+    {"type":"verb","de":"dauern","sk":"trvať","preterite":"dauerte","perfect":"hat gedauert","auxiliary":"haben","level":"A2","tags":["Pravidelné slovesá"],"exampleDe":"Wie lange hat der Film gedauert?","exampleSk":"Ako dlho trval film?"},
+    {"type":"noun","de":"Arzt","article":"der","plural":"die Ärzte","sk":"lekár","level":"A1","tags":["Zdravie"],"exampleDe":"Ich gehe zum Arzt.","exampleSk":"Idem k lekárovi."},
+    {"type":"noun","de":"Buch","article":"das","plural":"die Bücher","sk":"kniha","level":"A1","tags":["Voľný čas"],"exampleDe":"Ich lese ein Buch.","exampleSk":"Čítam knihu."},
+    {"type":"noun","de":"Abschied","article":"der","plural":"die Abschiede","sk":"rozlúčka","level":"A2","tags":["Ľudia"],"exampleDe":"Der Abschied war traurig.","exampleSk":"Rozlúčka bola smutná."},
+    {"type":"noun","de":"Stelle","article":"die","plural":"die Stellen","sk":"miesto / pracovné miesto","level":"A2","tags":["Práca"],"exampleDe":"Ich suche eine neue Stelle.","exampleSk":"Hľadám nové pracovné miesto."},
+    {"type":"noun","de":"Anzug","article":"der","plural":"die Anzüge","sk":"oblek","level":"A2","tags":["Oblečenie"],"exampleDe":"Er trägt einen dunklen Anzug.","exampleSk":"Má oblečený tmavý oblek."},
+    {"type":"noun","de":"Eingang","article":"der","plural":"die Eingänge","sk":"vchod","level":"A1","tags":["Mesto"],"exampleDe":"Der Eingang ist links.","exampleSk":"Vchod je vľavo."},
+    {"type":"noun","de":"Angst","article":"die","plural":"die Ängste","sk":"strach","level":"A1","tags":["Pocity"],"exampleDe":"Ich habe Angst.","exampleSk":"Bojím sa."},
+    {"type":"phrase","de":"Es kommt darauf an.","sk":"Záleží na tom.","level":"A2","tags":["Užitočné frázy"],"exampleDe":"Kommst du morgen? – Es kommt darauf an.","exampleSk":"Prídeš zajtra? – Záleží na tom."},
+    {"type":"phrase","de":"Ich war beim Arzt.","sk":"Bol som u lekára.","level":"A1","tags":["Zdravie","Perfekt a Präteritum"]},
+    {"type":"phrase","de":"Ich habe Halsschmerzen.","sk":"Bolí ma hrdlo.","level":"A1","tags":["Zdravie"]},
+    {"type":"phrase","de":"Ich möchte mich am Wochenende erholen.","sk":"Cez víkend by som si chcel oddýchnuť.","level":"A2","tags":["Voľný čas","Zvratné slovesá"]},
+    {"type":"other","de":"langweilig","sk":"nudný","level":"A1","tags":["Prídavné mená"]},
+    {"type":"other","de":"möglich","sk":"možný","level":"A2","tags":["Prídavné mená"]}
+  ]
+}
