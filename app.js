@@ -1,4 +1,4 @@
-/* Deutsch Trainer 1.0 – all study content stays on your device. No API keys or external database. */
+/* Deutsch Trainer 1.1 – all study content stays on your device. No API keys or external database. */
 'use strict';
 
 const DB_NAME = 'deutsch-trainer-v1';
@@ -15,6 +15,8 @@ let attempts = [];
 let importPending = null;
 let quiz = null;
 let noticeTimeout;
+const LIBRARY_PAGE_SIZE=45;
+let libraryVisible=LIBRARY_PAGE_SIZE;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -67,7 +69,7 @@ function dbDelete(store,id) {
 async function reloadData() {
   [entries,attempts] = await Promise.all([dbGetAll('entries'),dbGetAll('attempts')]);
   entries.sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-  renderStats(); renderLibrary(); renderCategories(); renderQuizAvailability();
+  renderStats(); renderLessonOptions(); renderLibraryTopics(); renderLibrary(); renderCategories(); renderQuizAvailability();
 }
 function newReview() { return {attempts:0,correct:0,wrong:0,streak:0,lastReviewed:null,dueAt:null}; }
 function val(v,max=350) {return typeof v === 'string' ? v.trim().slice(0,max) : '';}
@@ -92,7 +94,9 @@ function normalizeEntry(raw,keepProgress=false) {
     preterite:val(raw.preterite), perfect:val(raw.perfect),auxiliary:val(raw.auxiliary,20),
     exampleDe:val(raw.exampleDe,750),exampleSk:val(raw.exampleSk,750),
     level:['A1','A2','B1','B2'].includes(raw.level)?raw.level:'A1',
-    lesson:val(raw.lesson,100),notes:val(raw.notes,1500),tags:cleanTags(raw.tags),
+    lesson:val(raw.lesson,100),
+    lessons:[...new Set([val(raw.lesson,100),...(Array.isArray(raw.lessons)?raw.lessons.map(x=>val(x,100)):[])].filter(Boolean))].slice(0,30),
+    notes:val(raw.notes,1500),tags:cleanTags(raw.tags),
     alternatives:Array.isArray(raw.alternatives)?raw.alternatives.map(t=>val(t,250)).filter(Boolean).slice(0,20):[],
     createdAt:keepProgress && typeof raw.createdAt==='string' ? raw.createdAt : now,
     updatedAt:now,review:newReview()
@@ -118,6 +122,13 @@ function mergeEntries(oldEntry,newEntry){
   if(tags.length!==(oldEntry.tags||[]).length){merged.tags=tags;changed=true;}
   const alts=[...new Set([...(oldEntry.alternatives||[]),...(newEntry.alternatives||[])])];
   if(alts.length!==(oldEntry.alternatives||[]).length){merged.alternatives=alts;changed=true;}
+  // A familiar word can occur in several lessons. Link it to all of them without duplicating the record.
+  const oldLessons=[oldEntry.lesson,...(oldEntry.lessons||[])].filter(Boolean);
+  const newLessons=[newEntry.lesson,...(newEntry.lessons||[])].filter(Boolean);
+  const lessons=[...new Set([...oldLessons,...newLessons])].slice(0,30);
+  if(lessons.length!==(oldEntry.lessons||[]).length||lessons.some((t,i)=>t!==(oldEntry.lessons||[])[i])){
+    merged.lessons=lessons;changed=true;
+  }
   if(changed)merged.updatedAt=new Date().toISOString();
   return {merged,changed};
 }
@@ -129,6 +140,108 @@ function switchPage(page,updateHash=true){
   if(updateHash && location.hash!==`#${page}`)history.replaceState(null,'',`#${page}`);
   window.scrollTo({top:0,behavior:'auto'});
 }
+
+// Normalize human-written lesson labels so both “Lekcia 1” and “Begegnungen A2+ – Lekcia 1” belong together.
+// All the current imported material comes from Begegnungen A2+. Unknown custom names remain distinct.
+function lessonKey(raw){
+  const s=String(raw||'').trim();
+  if(!s)return 'unassigned';
+  const match=s.match(/(?:lekcia|lektion|kapitel|lesson)\s*0*(\d+)/i);
+  if(match)return `lesson-${Number(match[1])}`;
+  return 'custom:'+s;
+}
+const lessonNames={1:'Ausbildung und Tätigkeiten',2:'Hobbys und Freizeit',3:'Geld und Konsum',4:'Arbeit und Beruf',5:'Urlaub und Reisen',6:'Tiere und Menschen',7:'Wohnen und Essen',8:'Politik und Technik'};
+function lessonLabel(key){
+  if(key==='unassigned')return 'Bez priradenej lekcie';
+  if(key.startsWith('lesson-')){const n=Number(key.slice(7));return `Lekcia ${n}${lessonNames[n]?' · '+lessonNames[n]:''}`;}
+  return key.startsWith('custom:')?key.slice(7):key;
+}
+function entryLessonKeys(e){
+  const raw=[e.lesson,...(e.lessons||[]),...(e.tags||[]).filter(t=>/^(?:lekcia|lektion|kapitel)\s*\d+$/i.test(t))];
+  const keys=[...new Set(raw.filter(Boolean).map(lessonKey))];
+  return keys.length?keys:['unassigned'];
+}
+function lessonOptions(){
+  const counts=new Map();for(const e of entries)for(const k of entryLessonKeys(e)){counts.set(k,(counts.get(k)||0)+1);}
+  return [...counts].sort(([a],[b])=>{
+    const na=a.startsWith('lesson-')?Number(a.slice(7)):Infinity;
+    const nb=b.startsWith('lesson-')?Number(b.slice(7)):Infinity;
+    return na-nb||lessonLabel(a).localeCompare(lessonLabel(b),'sk');
+  });
+}
+function replaceOptions(el,options,defaultValue='all'){
+  const previous=el.value;el.replaceChildren();
+  for(const [value,label] of options){const op=document.createElement('option');op.value=value;op.textContent=label;el.add(op);}
+  el.value=options.some(([v])=>v===previous)?previous:defaultValue;
+  if(el.selectedIndex<0)el.selectedIndex=0;
+}
+function lessonMatches(e,choice){return choice==='all'||entryLessonKeys(e).includes(choice);}
+function sectionMatches(e,section){return section==='all'||(e.tags||[]).some(t=>t===`Časť ${section}`||t.startsWith(`Časť ${section} `));}
+function isUsefulTopic(tag){
+  return !(/^(?:Begegnungen A2\+|Lekcia \d+|Časť [ABCD]|Slovesá [–-]|Podstatné mená [–-]|Užitočné frázy a spojenia$|Modelové vety k lekcii$|Gramatické prehľady$)/i.test(tag));
+}
+function getTopics(list){
+  const counts=new Map();for(const e of list)for(const t of e.tags||[]){if(isUsefulTopic(t))counts.set(t,(counts.get(t)||0)+1);}
+  return [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'sk'));
+}
+function renderLessonOptions(){
+  const opts=[['all','Všetky lekcie'],...lessonOptions().map(([k,n])=>[k,`${lessonLabel(k)} (${n})`])];
+  const first=opts.find(([v])=>v.startsWith('lesson-'))?.[0]||'all';
+  const hadLessons=[...$('practiceLesson').options].some(x=>x.value.startsWith('lesson-'));
+  const previous=$('practiceLesson').value;
+  replaceOptions($('filterLesson'),opts,'all');
+  replaceOptions($('practiceLesson'),opts,first);
+  if(!hadLessons && previous==='all' && first!=='all')$('practiceLesson').value=first;
+  const list=$('knownLessons');list.replaceChildren();
+  for(const [k] of lessonOptions())if(k!=='unassigned'){
+    const e=entries.find(e=>entryLessonKeys(e).includes(k));
+    const v=[e?.lesson,...(e?.lessons||[])].find(x=>lessonKey(x)===k)||lessonLabel(k);
+    const el=document.createElement('option');el.value=v;list.append(el);
+  }
+}
+function renderLibraryTopics(){
+  const base=entries.filter(e=>lessonMatches(e,$('filterLesson').value));
+  const opts=[['all','Všetky témy'],...getTopics(base).map(([k,n])=>[k,`${k} (${n})`])];
+  replaceOptions($('filterTopic'),opts,'all');
+}
+function practiceBaseEntries(){
+  const types=new Set([...document.querySelectorAll('input[name="studyType"]:checked')].map(e=>e.value));
+  return entries.filter(e=>types.has(e.type)&&lessonMatches(e,$('practiceLesson').value)&&sectionMatches(e,$('practiceSection').value));
+}
+function practiceSelectedEntries(applyScope=true){
+  let source=practiceBaseEntries();
+  const topic=$('practiceTopic').value;if(topic!=='all')source=source.filter(e=>(e.tags||[]).includes(topic));
+  if(applyScope){const scope=$('practiceScope').value;
+    if(scope==='due')source=source.filter(due);
+    else if(scope==='wrong')source=source.filter(e=>e.review?.wrong>0).sort((a,b)=>(b.review?.wrong||0)-(a.review?.wrong||0));
+  }
+  return source;
+}
+function renderPracticeTopics(){
+  const base=practiceBaseEntries();
+  const opts=[['all','Všetky témy'],...getTopics(base).map(([k,n])=>[k,`${k} (${n})`])];
+  replaceOptions($('practiceTopic'),opts,'all');
+}
+function renderTypeCounts(){
+  const source=entries.filter(e=>lessonMatches(e,$('practiceLesson').value)&&sectionMatches(e,$('practiceSection').value));
+  const mapping={noun:'countNoun',verb:'countVerb',other:'countOther',phrase:'countPhrase'};
+  for(const [type,id] of Object.entries(mapping))$(id).textContent=source.filter(e=>e.type===type).length;
+}
+function renderQuizAvailability(){
+  renderTypeCounts();renderPracticeTopics();
+  updatePracticeSummary();
+}
+function countLabel(n,one,few,many){return `${n} ${n===1?one:n>=2&&n<=4?few:many}`;}
+function updatePracticeSummary(){
+  const source=practiceSelectedEntries();
+  const tasks=buildTasks(source,$('practiceKind').value);
+  const requested=Number($('practiceCount').value)||10;
+  $('quizAvailable').textContent=`Dostupných otázok po filtrovaní: ${tasks.length}`;
+  $('practiceSelectionInfo').innerHTML=`<strong>${countLabel(source.length,'vybraný záznam','vybrané záznamy','vybraných záznamov')}</strong> · ${countLabel(tasks.length,'možná otázka','možné otázky','možných otázok')}.<br>${tasks.length?`Tréning bude mať ${countLabel(Math.min(requested,tasks.length),'otázku','otázky','otázok')}.`:'Pre tieto filtre nie sú dostupné otázky. Zmeň typ učiva alebo otázok.'}`;
+  $('practiceSelectionInfo').classList.toggle('selection-empty',tasks.length===0);
+  $('beginPracticeBtn').disabled=!tasks.length;
+}
+
 function due(entry){const d=entry.review?.dueAt;return !d || new Date(d).getTime()<=Date.now();}
 function renderStats(){
   $('statEntries').textContent=entries.length;
@@ -143,22 +256,24 @@ function renderCategories(){
 function displayName(e){return e.type==='noun' && e.article?`${e.article} ${e.de}`:e.de;}
 function renderLibrary(){
   const term=$('searchEntries').value.toLocaleLowerCase('de-DE').trim();
-  const type=$('filterType').value, level=$('filterLevel').value;
-  const list=entries.filter(e=>(type==='all'||type===e.type)&&(level==='all'||level===e.level)&&(!term||[displayName(e),e.sk,e.preterite,e.perfect,...(e.tags||[])].join(' ').toLocaleLowerCase('de-DE').includes(term)));
-  $('libraryCount').textContent=`${list.length} z ${entries.length} záznamov`;
-  $('entryList').innerHTML=list.length?list.map(e=>`<article class="entry-card"><div class="entry-main"><div class="entry-top"><span class="type-label">${escapeHtml(typeLabels[e.type])}</span><span class="level-label">${escapeHtml(e.level)}</span>${(e.tags||[]).slice(0,2).map(t=>`<span class="level-label">${escapeHtml(t)}</span>`).join('')}</div><div class="entry-name">${escapeHtml(displayName(e))}</div><div class="entry-translation">${escapeHtml(e.sk)}</div>${e.type==='verb'&&(e.preterite||e.perfect)?`<div class="entry-extra">Präteritum: ${escapeHtml(e.preterite||'—')} &nbsp; · &nbsp; Perfekt: ${escapeHtml(e.perfect||'—')}</div>`:''}${e.type==='noun'&&e.plural?`<div class="entry-extra">Množné číslo: ${escapeHtml(e.plural)}</div>`:''}${e.exampleDe?`<div class="entry-extra">${escapeHtml(e.exampleDe)}</div>`:''}</div><div class="entry-actions"><button class="icon-button" data-edit="${escapeHtml(e.id)}">Upraviť</button><button class="icon-button danger" data-delete="${escapeHtml(e.id)}">Zmazať</button></div></article>`).join('') : `<div class="empty-state"><div class="empty-illustration">▤</div><strong>Žiadne záznamy</strong><p>${entries.length?'Skús upraviť filtre alebo vyhľadávanie.':'Zatiaľ tu nič nie je. Pridaj prvé slovo alebo načítaj ukážky.'}</p></div>`;
-}
-function renderQuizAvailability(){
-  const tasks=buildTasks(entries,'mix');
-  $('quizAvailable').textContent=`Dostupných otázok: ${tasks.length}`;
+  const type=$('filterType').value, level=$('filterLevel').value, topic=$('filterTopic').value;
+  const list=entries.filter(e=>lessonMatches(e,$('filterLesson').value)&&(type==='all'||type===e.type)&&(topic==='all'||(e.tags||[]).includes(topic))&&(level==='all'||level===e.level)&&(!term||[displayName(e),e.sk,e.preterite,e.perfect,...(e.tags||[])].join(' ').toLocaleLowerCase('de-DE').includes(term)));
+  const visible=list.slice(0,libraryVisible);
+  $('loadMoreEntriesBtn').classList.toggle('hidden',list.length<=libraryVisible);
+  $('loadMoreEntriesBtn').textContent=`Zobraziť ďalšie (${Math.min(LIBRARY_PAGE_SIZE,Math.max(0,list.length-libraryVisible))} z ${list.length-libraryVisible} zostávajúcich)`;
+  $('libraryCount').textContent=`Zodpovedá ${list.length} z ${entries.length} záznamov · zobrazených ${visible.length}`;
+  $('entryList').innerHTML=list.length?visible.map(e=>`<article class="entry-card"><div class="entry-main"><div class="entry-top"><span class="type-label">${escapeHtml(typeLabels[e.type])}</span><span class="level-label">${escapeHtml(e.level)}</span>${entryLessonKeys(e).filter(k=>k!=='unassigned').slice(0,2).map(k=>`<span class="level-label">${escapeHtml(lessonLabel(k))}</span>`).join('')}${(e.tags||[]).filter(isUsefulTopic).slice(0,1).map(t=>`<span class="level-label">${escapeHtml(t)}</span>`).join('')}</div><div class="entry-name">${escapeHtml(displayName(e))}</div><div class="entry-translation">${escapeHtml(e.sk)}</div>${e.type==='verb'&&(e.preterite||e.perfect)?`<div class="entry-extra">Präteritum: ${escapeHtml(e.preterite||'—')} &nbsp; · &nbsp; Perfekt: ${escapeHtml(e.perfect||'—')}</div>`:''}${e.type==='noun'&&e.plural?`<div class="entry-extra">Množné číslo: ${escapeHtml(e.plural)}</div>`:''}${e.exampleDe?`<div class="entry-extra">${escapeHtml(e.exampleDe)}</div>`:''}</div><div class="entry-actions"><button class="icon-button" data-edit="${escapeHtml(e.id)}">Upraviť</button><button class="icon-button danger" data-delete="${escapeHtml(e.id)}">Zmazať</button></div></article>`).join('') : `<div class="empty-state"><div class="empty-illustration">▤</div><strong>Žiadne záznamy</strong><p>${entries.length?'Skús upraviť filtre alebo vyhľadávanie.':'Zatiaľ tu nič nie je. Pridaj prvé slovo alebo načítaj ukážky.'}</p></div>`;
 }
 function showDialog(id){
   const e=id?entries.find(x=>x.id===id):null;
   $('entryForm').reset();$('entryId').value=e?.id||'';
   $('dialogHeading').textContent=e?'Upraviť záznam':'Nový záznam';
-  const mapping={fieldType:'type',fieldDe:'de',fieldSk:'sk',fieldArticle:'article',fieldPlural:'plural',fieldPreterite:'preterite',fieldPerfect:'perfect',fieldAux:'auxiliary',fieldLevel:'level',fieldTags:'tags',fieldExampleDe:'exampleDe',fieldExampleSk:'exampleSk',fieldNotes:'notes'};
+  const mapping={fieldType:'type',fieldDe:'de',fieldSk:'sk',fieldArticle:'article',fieldPlural:'plural',fieldPreterite:'preterite',fieldPerfect:'perfect',fieldAux:'auxiliary',fieldLevel:'level',fieldLesson:'lesson',fieldTags:'tags',fieldExampleDe:'exampleDe',fieldExampleSk:'exampleSk',fieldNotes:'notes'};
   Object.entries(mapping).forEach(([id,key])=>{if(e)$(id).value=key==='tags'?(e.tags||[]).join(', '):e[key]||((key==='level')?'A1':'');});
-  if(!e){$('fieldType').value='verb';$('fieldLevel').value='A1';}
+  if(!e){$('fieldType').value='verb';$('fieldLevel').value='A1';
+    const key=$('practiceLesson').value;
+    if(key!=='all'&&key!=='unassigned'){$('fieldLesson').value=entries.flatMap(x=>[x.lesson,...(x.lessons||[])]).find(t=>lessonKey(t)===key)||lessonLabel(key);}
+  }
   toggleFormFields();$('entryDialog').showModal();
   setTimeout(()=>$('fieldDe').focus(),30);
 }
@@ -168,13 +283,13 @@ async function handleEntrySave(event){
   const id=$('entryId').value;
   const record={type:$('fieldType').value,de:$('fieldDe').value,sk:$('fieldSk').value,article:$('fieldArticle').value,plural:$('fieldPlural').value,
     preterite:$('fieldPreterite').value,perfect:$('fieldPerfect').value,auxiliary:$('fieldAux').value,level:$('fieldLevel').value,
-    tags:$('fieldTags').value,exampleDe:$('fieldExampleDe').value,exampleSk:$('fieldExampleSk').value,notes:$('fieldNotes').value};
+    tags:$('fieldTags').value,lesson:$('fieldLesson').value,exampleDe:$('fieldExampleDe').value,exampleSk:$('fieldExampleSk').value,notes:$('fieldNotes').value};
   try {
     const old=entries.find(e=>e.id===id);
     const e=normalizeEntry(record);
     const duplicate=entries.find(x=>entryKey(x)===entryKey(e)&&x.id!==id);
     if(duplicate){notify('Takýto záznam už v slovníku existuje.',true);return;}
-    if(old){e.id=old.id;e.createdAt=old.createdAt;e.review=old.review;e.alternatives=old.alternatives||[];}
+    if(old){e.id=old.id;e.createdAt=old.createdAt;e.review=old.review;e.alternatives=old.alternatives||[];e.lessons=[...new Set([...(old.lessons||[]),old.lesson,e.lesson].filter(Boolean))];}
     await dbPut('entries',e);$('entryDialog').close();await reloadData();notify(old?'Záznam bol upravený.':'Záznam bol uložený.');
   }catch(error){notify(error.message||'Záznam sa nepodarilo uložiť.',true);}
 }
@@ -200,14 +315,12 @@ function buildTasks(list,kind){
 function shuffle(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]];}return x;}
 function startPractice(){
   const kind=$('practiceKind').value,scope=$('practiceScope').value;
-  let source=entries;
-  if(scope==='due')source=entries.filter(due);
-  if(scope==='wrong')source=[...entries].filter(x=>x.review?.wrong>0).sort((a,b)=>((b.review.wrong||0)-(a.review.wrong||0)));
+  const source=practiceSelectedEntries();
   let tasks=buildTasks(source,kind);
   if(scope!=='wrong')tasks=shuffle(tasks);
   const count=Number($('practiceCount').value)||10;
   tasks=tasks.slice(0,count);
-  if(!tasks.length){notify('Pre zvolené nastavenie nie sú dostupné žiadne otázky. Skús iný typ alebo pridaj slovíčka.',true);return;}
+  if(!tasks.length){notify('Pre vybranú lekciu a typ učiva nie sú dostupné otázky. Skús iné filtre.',true);return;}
   quiz={tasks,index:0,good:0,answered:0,mode:$('practiceMode').value,resolved:false};
   $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
   renderQuestion();
@@ -292,7 +405,7 @@ function nextQuestion(){
   }else renderQuestion();
 }
 function resetPractice(){quiz=null;$('practiceActive').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceSetup').classList.remove('hidden');}
-const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.0 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
+const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.1 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
 async function copyText(text){
   try{await navigator.clipboard.writeText(text);notify('Prompt je skopírovaný. Vlož ho do ChatGPT a doplň zoznam slov.');}
   catch{const el=$('jsonInput');el.value=text;el.focus();el.select();notify('Automatické kopírovanie nie je dostupné. Prompt je označený, skopíruj ho pomocou Ctrl+C.');}
@@ -377,8 +490,15 @@ function bind(){
   $('homeDemoBtn').addEventListener('click',loadDemo);
   $('allEntriesBtn').addEventListener('click',()=>switchPage('slovnik'));
   $('openImportBtn').addEventListener('click',()=>switchPage('import'));
-  $('startQuickBtn').addEventListener('click',()=>{switchPage('trening');startPractice();});
-  ['searchEntries','filterType','filterLevel'].forEach(id=>$(id).addEventListener('input',renderLibrary));
+  $('startQuickBtn').addEventListener('click',()=>{resetPractice();switchPage('trening');renderQuizAvailability();});
+  ['searchEntries','filterType','filterLevel','filterTopic'].forEach(id=>$(id).addEventListener('input',()=>{libraryVisible=LIBRARY_PAGE_SIZE;renderLibrary();}));
+  $('filterLesson').addEventListener('change',()=>{libraryVisible=LIBRARY_PAGE_SIZE;renderLibraryTopics();renderLibrary();});
+  $('loadMoreEntriesBtn').addEventListener('click',()=>{libraryVisible+=LIBRARY_PAGE_SIZE;renderLibrary();});
+  ['practiceLesson','practiceSection','practiceKind','practiceScope','practiceCount'].forEach(id=>$(id).addEventListener('change',renderQuizAvailability));
+  document.querySelectorAll('input[name="studyType"]').forEach(el=>el.addEventListener('change',renderQuizAvailability));
+  $('practiceTopic').addEventListener('change',updatePracticeSummary);
+  $('selectAllTypesBtn').addEventListener('click',()=>{document.querySelectorAll('input[name="studyType"]').forEach(el=>el.checked=true);renderQuizAvailability();});
+  $('clearTypesBtn').addEventListener('click',()=>{document.querySelectorAll('input[name="studyType"]').forEach(el=>el.checked=false);renderQuizAvailability();});
   $('entryList').addEventListener('click',e=>{
     const edit=e.target.closest('[data-edit]');const del=e.target.closest('[data-delete]');
     if(edit)showDialog(edit.dataset.edit);else if(del)deleteEntry(del.dataset.delete);
