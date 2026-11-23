@@ -1,4 +1,4 @@
-/* Deutsch Trainer 1.3: spaced repetition logic, reusable and dependency-free. */
+/* Deutsch Trainer 1.5: guided introduction plus spaced repetition. */
 'use strict';
 const DeutschSRS = (() => {
   const DAY=86400000;
@@ -35,6 +35,11 @@ const DeutschSRS = (() => {
     return entry.reviewModes[kind];
   }
   function mastered(entry){return Object.values(entry.reviewModes||{}).some(s=>s && s.streak>=3 && s.intervalDays>=7 && (s.successDays||[]).length>=2);}
+  function duoMastered(entry){
+    const a=state(entry,'de_to_sk')||{}, b=state(entry,'sk_to_de')||{};
+    const days=new Set([...(a.successDays||[]),...(b.successDays||[])]);
+    return Number(a.correct||0)>=2 && Number(b.correct||0)>=1 && days.size>=2;
+  }
   function summarize(attempts,entries,now=new Date()){
     const today=todayKey(now);
     const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
@@ -61,12 +66,23 @@ const DeutschSRS = (() => {
   }
   function shuffle(array){const a=[...array];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
   function cloze(entry){
-    const str=entry.type==='phrase'?entry.de:(entry.exampleDe||'');
-    if(!str || str.length>220)return null;
+    // Cloze requires a complete sentence AND its complete translation.
+    if(entry.type!=='phrase')return null;
+    const str=entry.de,translation=entry.sk;
+    if(!str||!translation || str.length>220 || !/[.!?]$/.test(str.trim()) || !/[.!?]$/.test(translation.trim()))return null;
     const matches=[...str.matchAll(/\b[A-Za-zÄÖÜäöüß]{4,}\b/g)].filter(m=>!['diese','dieser','dieses','einen','einem','einer','eines','seine','seinen','meine','meinen','meinem','deine','deinen','nicht','haben','wurde','werden','sowie','jedem','allem'].includes(m[0].toLowerCase()));
     if(!matches.length)return null;
     const token=matches[Math.floor(Math.random()*matches.length)];
-    return {kind:'cloze',entryId:entry.id,question:str.slice(0,token.index)+'_____'+str.slice(token.index+token[0].length),answer:token[0],hint:entry.sk};
+    return {kind:'cloze',entryId:entry.id,question:str.slice(0,token.index)+'_____'+str.slice(token.index+token[0].length),answer:token[0],fullDe:str,fullSk:translation};
+  }
+  function clozeSk(entry){
+    if(entry.type!=='phrase')return null;
+    const original=entry.sk,fullDe=entry.de;
+    if(!original||!fullDe || original.length>220 || !/[.!?]$/.test(original.trim()) || !/[.!?]$/.test(fullDe.trim()))return null;
+    const matches=[...original.matchAll(/[\p{L}]{4,}/gu)];
+    if(!matches.length)return null;
+    const word=matches[Math.floor(Math.random()*matches.length)];
+    return {kind:'cloze_sk',entryId:entry.id,question:original.slice(0,word.index)+'_____'+original.slice(word.index+word[0].length),answer:word[0],fullDe,fullSk:original};
   }
   function makeCandidates(entry){
     const a=[{entryId:entry.id,kind:'de_to_sk'},{entryId:entry.id,kind:'sk_to_de'}];
@@ -113,5 +129,83 @@ const DeutschSRS = (() => {
     while(pending.length){let idx=pending.findIndex(t=>t.entryId!==last);if(idx<0)idx=0;const [t]=pending.splice(idx,1);ordered.push(t);last=t.entryId;}
     return ordered;
   }
-  return {todayKey,state,isNew,isDue,dueAt,apply,mastered,summarize,selectTasks,cloze,makeCandidates};
+  // A vocabulary item is *introduced* only after it was answered in a quiz.
+  // Viewing the introductory card does not create a success or an attempt.
+  function hasStudied(entry){
+    return Number(entry?.review?.attempts||0)>0 || Object.values(entry?.reviewModes||{}).some(s=>Number(s?.attempts||0)>0);
+  }
+  function suitableCandidates(entry,opts={}){
+    const base=[{entryId:entry.id,kind:'de_to_sk'}];
+    if(opts.reverse)base.push({entryId:entry.id,kind:'sk_to_de'});
+    const german=entry.reviewModes?.de_to_sk||{};
+    const slovak=entry.reviewModes?.sk_to_de||{};
+    // All advanced questions are delayed until the learner knows the meaning in BOTH directions,
+    // and has recalled the expression correctly on more than one date.
+    const confident=duoMastered(entry);
+    if(opts.cloze && confident && entry.type==='phrase'){
+      const gap=cloze(entry);if(gap && gap.fullSk)base.push(gap);
+      const opposite=clozeSk(entry);if(opposite && opts.reverse)base.push(opposite);
+    }
+    if(opts.grammar && confident){
+      if(entry.type==='verb'){
+        if(entry.perfect)base.push({entryId:entry.id,kind:'perfect'});
+        if(entry.preterite)base.push({entryId:entry.id,kind:'preterite'});
+      }
+      if(entry.type==='noun'){
+        if(entry.article)base.push({entryId:entry.id,kind:'article'});
+        if(entry.plural)base.push({entryId:entry.id,kind:'plural'});
+      }
+    }
+    return base;
+  }
+
+  function interleaveTypes(items,getType){
+    const groups=new Map();
+    for(const item of items){const type=getType(item)||'other';if(!groups.has(type))groups.set(type,[]);groups.get(type).push(item);}
+    const out=[];const preferred=['noun','verb','phrase','other'];
+    const order=[...preferred,...[...groups.keys()].filter(t=>!preferred.includes(t))];
+    while([...groups.values()].some(g=>g.length)){
+      for(const type of order){const item=groups.get(type)?.shift();if(item)out.push(item);}
+    }
+    return out;
+  }
+  // Three plans: never-seen words, reviewed words, or a controlled mixture.
+  // A word is introduced at most once in a guided round, then asked in both directions.
+  function selectGuidedTasks(list,count=10,plan='new',newWords=5,opts={}){
+    const max=Math.min(50,Math.max(0,Math.trunc(Number(count)||0)));
+    if(!list?.length||!max)return [];
+    const orderEasy=(a,b)=>{
+      // Level A1 first, then shorter everyday expressions before long technical phrases.
+      const lvl={A1:0,A2:1,B1:2,B2:3};
+      return (lvl[a.level]??2)-(lvl[b.level]??2) ||
+        a.de.length-b.de.length || String(a.de).localeCompare(String(b.de),'de');
+    };
+    const fresh=interleaveTypes(opts.easy?list.filter(e=>!hasStudied(e)).sort(orderEasy):shuffle(list.filter(e=>!hasStudied(e))),e=>e.type);
+    const old=interleaveTypes(shuffle(list.filter(hasStudied)),e=>e.type);
+    const selected=[];const used=new Set();
+    const push=t=>{if(selected.length>=max)return false;const key=t.entryId+'::'+t.kind;
+      if(used.has(key))return false;selected.push(t);used.add(key);return true;};
+    function addOld(onlyDue,limit){
+      const tasks=interleaveTypes(old.flatMap(e=>shuffle(suitableCandidates(e,opts))),t=>old.find(e=>e.id===t.entryId)?.type)
+        .filter(t=>isDue(old.find(e=>e.id===t.entryId),t.kind)===onlyDue);
+      // Distinct entries first, then additional directions.
+      const firstPass=tasks.filter((t,i)=>tasks.findIndex(x=>x.entryId===t.entryId)===i);
+      for(const t of [...firstPass,...tasks]){if(selected.length>=limit)break;push(t);}
+    }
+    if(plan!=='new')addOld(true,plan==='mixed'?Math.ceil(max/2):max);
+    if(plan!=='review'){
+      const cap=Math.max(1,Math.min(20,Math.trunc(Number(newWords)||5)));
+      const quota=plan==='mixed'?Math.max(0,max-selected.length):max;
+      const kindsPerWord=1;
+      const num=Math.min(cap,fresh.length,Math.ceil(quota/kindsPerWord));
+      const chosen=fresh.slice(0,num);
+      for(const e of chosen)push({entryId:e.id,kind:'de_to_sk'});
+      // Opposite direction is introduced on a later review, not before the first translation is learned.
+    }
+    if(plan!=='new'){addOld(false,max);addOld(true,max);}
+    const byId=new Map(list.map(e=>[e.id,e]));
+    return interleaveTypes(selected,t=>byId.get(t.entryId)?.type);
+  }
+
+  return {todayKey,state,isNew,isDue,dueAt,apply,mastered,duoMastered,summarize,selectTasks,selectGuidedTasks,hasStudied,cloze,clozeSk,makeCandidates};
 })();

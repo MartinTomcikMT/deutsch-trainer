@@ -1,10 +1,10 @@
-/* Deutsch Trainer 1.3 – smart repetition, flexible training and progress tracking. */
+/* Deutsch Trainer 1.5 – introduce, practice and review + progress tracking. */
 'use strict';
 
 const DB_NAME = 'deutsch-trainer-v1';
 const DB_VERSION = 1;
 const DATA_FORMAT = 'deutsch-trainer';
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.5.0';
 const DATA_VERSION = 1;
 const entryFields = ['type','de','sk','article','plural','preterite','perfect','auxiliary','exampleDe','exampleSk','level','lesson','notes'];
 const typeLabels = {verb:'Sloveso',noun:'Podstatné meno',phrase:'Fráza / veta',other:'Slovíčko'};
@@ -112,7 +112,7 @@ function normalizeEntry(raw,keepProgress=false) {
   }
   if(keepProgress && raw.reviewModes && typeof raw.reviewModes==='object') {
     for(const [kind,state] of Object.entries(raw.reviewModes)){
-      if(!['de_to_sk','sk_to_de','cloze','perfect','preterite','article','plural'].includes(kind))continue;
+      if(!['de_to_sk','sk_to_de','cloze','cloze_sk','perfect','preterite','article','plural'].includes(kind))continue;
       if(!state||typeof state!=='object')continue;
       item.reviewModes[kind]={attempts:Math.max(0,Number(state.attempts)||0),correct:Math.max(0,Number(state.correct)||0),
         wrong:Math.max(0,Number(state.wrong)||0),streak:Math.max(0,Number(state.streak)||0),
@@ -151,7 +151,7 @@ function switchPage(page,updateHash=true){
   if(!['domov','slovnik','ucenie','trening','statistiky','import'].includes(page))page='domov';
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('active',e.id==='page-'+page));
   document.querySelectorAll('.nav-link').forEach(e=>e.classList.toggle('active',e.dataset.page===page));
-  $('breadcrumb').innerHTML=`Osobná učebnica <span>/</span> ${escapeHtml({domov:'Prehľad',slovnik:'Môj slovník',ucenie:'Učenie opakovaním',trening:'Vlastný tréning',statistiky:'Štatistiky',import:'Import a zálohy'}[page])}`;
+  $('breadcrumb').innerHTML=`Osobná učebnica <span>/</span> ${escapeHtml({domov:'Prehľad',slovnik:'Môj slovník',ucenie:'Duolingo režim',trening:'Vlastný tréning',statistiky:'Štatistiky',import:'Import a zálohy'}[page])}`;
   if(updateHash && location.hash!==`#${page}`)history.replaceState(null,'',`#${page}`);
   window.scrollTo({top:0,behavior:'auto'});
 }
@@ -199,17 +199,58 @@ function getTopics(list){
   const counts=new Map();for(const e of list)for(const t of e.tags||[]){if(isUsefulTopic(t))counts.set(t,(counts.get(t)||0)+1);}
   return [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'sk'));
 }
+const DUO_CORE_SIZE=40;
+const DUO_TYPE_QUOTAS={noun:12,verb:12,phrase:10,other:6};
+function duoCoreForLesson(key){
+  const all=entries.filter(e=>lessonMatches(e,key));
+  // Optional B material never blocks advancement. Text from A/C/D is preferred.
+  const eligible=all.filter(e=>!(e.tags||[]).some(t=>/^Časť B\b/i.test(t)));
+  const pool=eligible.length?eligible:all;
+  const levelRank={A1:0,A2:1,B1:2,B2:3};
+  const sorted=[...pool].sort((a,b)=>(levelRank[a.level]??3)-(levelRank[b.level]??3)||
+    (a.de.length-b.de.length)||a.de.localeCompare(b.de,'de'));
+  const selected=[];const used=new Set();
+  for(const [type,limit] of Object.entries(DUO_TYPE_QUOTAS)){
+    for(const e of sorted.filter(e=>e.type===type).slice(0,limit)){selected.push(e);used.add(e.id);}
+  }
+  for(const e of sorted){if(selected.length>=DUO_CORE_SIZE)break;if(!used.has(e.id)){selected.push(e);used.add(e.id);}}
+  return selected.slice(0,DUO_CORE_SIZE);
+}
+function duoLessonProgress(key){
+  const pool=duoCoreForLesson(key);
+  const mastered=pool.filter(DeutschSRS.duoMastered).length;
+  const introduced=pool.filter(DeutschSRS.hasStudied).length;
+  return {total:pool.length,mastered,introduced,done:pool.length>0&&mastered===pool.length};
+}
+function duoLessonUnlocked(key){
+  if(!/^lesson-\d+$/.test(key))return false;
+  const n=Number(key.slice(7));
+  if(n<1)return false;
+  for(let i=1;i<n;i++)if(!duoLessonProgress('lesson-'+i).done)return false;
+  return true;
+}
+function renderDuoLessonOptions(){
+  const select=$('studyLesson');const previous=select.value;
+  select.replaceChildren();
+  for(let i=1;i<=8;i++){
+    const key='lesson-'+i;const status=duoLessonProgress(key);
+    const enabled=duoLessonUnlocked(key)&&status.total>0;
+    const opt=document.createElement('option');opt.value=key;opt.disabled=!enabled;
+    opt.textContent=lessonLabel(key)+(status.total?' ('+status.mastered+'/'+status.total+' zvládnutých)':' (zatiaľ nenahraté)')+(enabled?'':' 🔒');
+    select.add(opt);
+  }
+  const prevOpt=[...select.options].find(x=>x.value===previous&&!x.disabled);
+  const first=[...select.options].find(x=>!x.disabled);
+  select.value=prevOpt?.value||first?.value||'lesson-1';
+}
 function renderLessonOptions(){
   const opts=[['all','Všetky lekcie'],...lessonOptions().map(([k,n])=>[k,`${lessonLabel(k)} (${n})`])];
   const first=opts.find(([v])=>v.startsWith('lesson-'))?.[0]||'all';
   const hadLessons=[...$('practiceLesson').options].some(x=>x.value.startsWith('lesson-'));
-  const studyHadLessons=[...$('studyLesson').options].some(x=>x.value.startsWith('lesson-'));
-  const studyPrevious=$('studyLesson').value;
   const previous=$('practiceLesson').value;
   replaceOptions($('filterLesson'),opts,'all');
   replaceOptions($('practiceLesson'),opts,first);
-  replaceOptions($('studyLesson'),opts,first);
-  if(!studyHadLessons && studyPrevious==='all' && first!=='all')$('studyLesson').value=first;
+  renderDuoLessonOptions();
   if(!hadLessons && previous==='all' && first!=='all')$('practiceLesson').value=first;
   const list=$('knownLessons');list.replaceChildren();
   for(const [k] of lessonOptions())if(k!=='unassigned'){
@@ -262,7 +303,21 @@ function requestedQuestionCount(max){
   if(!Number.isInteger(value)||value<1||value>10000)return 0;
   return Math.min(value,max);
 }
+function syncPracticeKind(){
+  const selected=document.querySelector('input[name="studyCategory"]:checked')?.value||'words';
+  const allowGrammar=$('practiceAdvanced').checked;
+  const kind=$('practiceKind');
+  for(const option of kind.options){
+    const grammar=option.dataset.grammar==='true';
+    const compatible=(!['preterite','perfect'].includes(option.value)||selected==='verb'||selected==='all') &&
+      (!['article','plural'].includes(option.value)||selected==='noun'||selected==='words'||selected==='all');
+    option.disabled=grammar&&(!allowGrammar||!compatible);
+    option.hidden=grammar&&!allowGrammar;
+  }
+  if(kind.selectedOptions[0]?.disabled)kind.value='de_to_sk';
+}
 function updatePracticeSummary(){
+  syncPracticeKind();
   const source=practiceSelectedEntries();
   const kind=$('practiceKind').value;
   const tasks=buildTasks(source,kind);
@@ -342,6 +397,7 @@ async function deleteEntry(id){
 function correctAnswer(e,kind,task=null){
   switch(kind){
     case 'cloze':return task?.answer||'';
+    case 'cloze_sk':return task?.answer||'';
     case 'article':return e.article;
     case 'plural':return e.plural;
     case 'preterite':return e.preterite;
@@ -366,6 +422,7 @@ function buildTasks(list,kind){
 }
 function shuffle(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]];}return x;}
 function startPractice(){
+  syncPracticeKind();
   const kind=$('practiceKind').value,scope=$('practiceScope').value;
   const source=practiceSelectedEntries();
   let tasks=buildTasks(source,kind);
@@ -373,7 +430,7 @@ function startPractice(){
   const count=requestedQuestionCount(tasks.length);
   if(!count){notify('Vyber platný počet otázok a dostupné učivo.',true);return;}
   tasks=tasks.slice(0,count).map(t=>t.kind==='both'?{...t,kind:Math.random()<.5?'de_to_sk':'sk_to_de'}:t);
-  quiz={tasks,index:0,good:0,answered:0,mode:$('practiceMode').value,resolved:false,style:'custom'};
+  quiz={tasks,index:0,good:0,answered:0,mode:$('practiceMode').value,resolved:false,style:'custom',introEnabled:false};
   $('duoActiveHint').classList.add('hidden');
   $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
   window.scrollTo({top:0,behavior:'auto'});
@@ -383,7 +440,13 @@ function currentTask(){return quiz.tasks[quiz.index];}
 function currentEntry(){return entries.find(e=>e.id===currentTask().entryId);}
 function promptFor(e,kind,task=null){
   switch(kind){
-    case 'cloze':return {label:'DOPLŇ CHÝBAJÚCE SLOVO',q:task?.question||e.de,context:`Preklad: ${e.sk}. Napíš iba chýbajúce nemecké slovo.`};
+    case 'cloze': {
+      const fullSk=task?.fullSk||e.exampleSk||e.sk;
+      return {label:'DOPLŇ CHÝBAJÚCE NEMECKÉ SLOVO',q:task?.question||e.de,
+        context:`Celá veta po slovensky: ${fullSk}\nDoplň jedno slovo do nemeckej vety (${task?.answer?.length||'?'} písmen).`};
+    }
+    case 'cloze_sk':return {label:'DOPLŇ CHÝBAJÚCE SLOVENSKÉ SLOVO',q:task?.question||e.sk,
+      context:`Celá veta po nemecky: ${task?.fullDe||e.de}\nDoplň jedno slovo do slovenskej vety.`};
     case 'article':return {label:'SPRÁVNY ČLEN',q:`Aký člen má slovo „${e.de}“?`,context:'Napíš der, die alebo das.'};
     case 'plural':return {label:'MNOŽNÉ ČÍSLO',q:`Aké je množné číslo slova „${displayName(e)}“?`,context:'Napíš množné číslo aj s členom, napríklad die Bücher.'};
     case 'preterite':return {label:'PRÄTERITUM',q:`er/sie/es ______ · ${e.de}`,context:`Doplň tvar Präteritum slovesa „${e.de}“ (${e.sk}).`};
@@ -406,12 +469,45 @@ function renderQuestion(){
   $('nextQuestionBtn').classList.add('hidden');$('gradeButtons').classList.add('hidden');
   $('revealAnswerBtn').classList.remove('hidden');
   $('answerInput').value='';
-  if(quiz.mode==='type')setTimeout(()=>$('answerInput').focus(),50);
+  const grammarKinds=['perfect','preterite','article','plural','cloze','cloze_sk'];
+  const firstGrammar=grammarKinds.includes(task.kind) && DeutschSRS.isNew(e,task.kind);
+  const introduction=quiz.style==='duo' && quiz.introEnabled && (
+    (quiz.newAtStart?.has(e.id)&&!quiz.previewedIds.has(e.id)) ||
+    (firstGrammar&&!quiz.previewedIds.has(e.id+'::'+task.kind))
+  );
+  $('introPreview').classList.toggle('hidden',!introduction);
+  $('questionCard').classList.toggle('hidden',introduction);
+  if(introduction){
+    if(firstGrammar){
+      quiz.previewedIds.add(e.id+'::'+task.kind);
+      $('introGerman').textContent=`${displayName(e)} · ${q.label.toLowerCase()}`;
+      $('introSlovak').textContent=correctAnswer(e,task.kind,task);
+      $('introExtra').textContent=`Nový typ úlohy. Pozri si tvar alebo chýbajúce slovo. Znamená to: ${e.sk}. Teraz ho ešte nemusíš vedieť spamäti.`;
+      $('introExtra').classList.remove('hidden');
+    }else{
+      quiz.previewedIds.add(e.id);
+      $('introGerman').textContent=displayName(e);
+      $('introSlovak').textContent=e.sk;
+      $('introExtra').textContent=e.type==='verb'?'Zatiaľ sa učíš iba význam slovesa. Minulé časy sa pridajú neskôr.':'';
+      $('introExtra').classList.toggle('hidden',e.type!=='verb');
+    }
+    $('introExample').replaceChildren();
+    if(e.exampleDe){const a=document.createElement('p');a.textContent=e.exampleDe;$('introExample').append(a);}
+    if(e.exampleSk){const a=document.createElement('p');a.textContent=e.exampleSk;$('introExample').append(a);}
+    $('introExample').classList.toggle('hidden',!e.exampleDe&&!e.exampleSk);
+    $('practiceProgressLabel').textContent=`Zoznám sa so slovom · otázka ${quiz.index+1} / ${quiz.tasks.length}`;
+  }else if(quiz.mode==='type')setTimeout(()=>$('answerInput').focus(),50);
+}
+function completeIntroduction(){
+  if(!quiz||$('introPreview').classList.contains('hidden'))return;
+  $('introPreview').classList.add('hidden');$('questionCard').classList.remove('hidden');
+  if(quiz.mode==='type')$('answerInput').focus();
+  $('practiceProgressLabel').textContent=`Otázka ${quiz.index+1} / ${quiz.tasks.length} · skús odpovedať`;
 }
 function normalizeAnswer(a,kind='sk_to_de'){
   let text=String(a||'').trim().toLocaleLowerCase(kind==='de_to_sk'?'sk-SK':'de-DE')
     .replace(/[.!?]+$/g,'').replace(/[„“”"']/g,'').replace(/\s+/g,' ');
-  if(kind==='de_to_sk')text=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(kind==='de_to_sk'||kind==='cloze_sk')text=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   return text.trim();
 }
 function acceptableAnswers(e,kind,task=null){
@@ -442,7 +538,7 @@ async function recordAttempt(isCorrect){
   r.dueAt=mode.dueAt;
   e.review=r;e.updatedAt=now.toISOString();
   const attempt={id:uid(),entryId:e.id,kind:task.kind,correct:!!isCorrect,createdAt:now.toISOString(),sessionType:quiz.style||'custom'};
-  try{await dbPut('entries',e);await dbPut('attempts',attempt);attempts.push(attempt);renderStats();}
+  try{await dbPut('entries',e);await dbPut('attempts',attempt);attempts.push(attempt);renderStats();if(quiz.style==='duo')renderDuoLessonOptions();}
   catch(err){notify('Odpoveď sa nepodarilo uložiť: '+err.message,true);}
   if(quiz.style==='duo'&&!isCorrect&&!task.retryCount){
     quiz.tasks.splice(Math.min(quiz.tasks.length,quiz.index+3),0,{...task,retryCount:1});
@@ -462,6 +558,11 @@ async function checkTypedAnswer(){
   const correct=isCorrectAnswer(currentEntry(),currentTask().kind,typed,currentTask());
   await recordAttempt(correct);showAnswerResult(correct);
 }
+async function dontKnow(){
+  if(!quiz||quiz.resolved)return;
+  await recordAttempt(false);
+  showAnswerResult(false);
+}
 function revealCard(){
   if(!quiz || quiz.resolved)return;
   const e=currentEntry(),task=currentTask();
@@ -474,32 +575,62 @@ function nextQuestion(){
   if(!quiz||!quiz.resolved)return;
   quiz.index++;
   if(quiz.index>=quiz.tasks.length){
+    $('introPreview').classList.add('hidden');$('questionCard').classList.remove('hidden');
     $('practiceActive').classList.add('hidden');$('practiceFinished').classList.remove('hidden');
     $('practiceSummary').textContent=`Správne odpovede: ${quiz.good} z ${quiz.answered} (${Math.round(100*quiz.good/Math.max(quiz.answered,1))} %). Výsledky sa uložili do tvojej databázy.`;
-    $('progressBar').style.width='100%';renderQuizAvailability();
+    $('progressBar').style.width='100%';renderQuizAvailability();renderDuoLessonOptions();updateDuolingoPreview();
   }else renderQuestion();
 }
 function resetPractice(){
   const previousStyle=quiz?.style;
-  quiz=null;$('practiceActive').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceSetup').classList.remove('hidden');
+  quiz=null;$('introPreview').classList.add('hidden');$('questionCard').classList.remove('hidden');
+  $('practiceActive').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceSetup').classList.remove('hidden');
   $('duoActiveHint').classList.add('hidden');
   if(previousStyle==='duo')switchPage('ucenie');
 }
-function activeStudyTypes(){return ['noun','verb','phrase','other'].filter(type=>({noun:$('studyNouns'),verb:$('studyVerbs'),phrase:$('studyPhrases'),other:$('studyOthers')}[type]).checked);}
-function studyPool(){const lesson=$('studyLesson').value;const types=new Set(activeStudyTypes());return entries.filter(e=>types.has(e.type)&&lessonMatches(e,lesson));}
+function studyPool(){
+  const lesson=$('studyLesson').value;
+  return duoLessonUnlocked(lesson)?duoCoreForLesson(lesson):[];
+}
 function studyCount(){return Number(document.querySelector('input[name="studyCount"]:checked')?.value)||10;}
+function studyPlan(){return document.querySelector('input[name="studyPlan"]:checked')?.value||'mixed';}
+function studyNewWords(){return Number($('studyNewWords').value)||3;}
+// Duolingo always combines types; the difficulty adapts to actual learning progress.
+function guidedOptions(){return {easy:true,reverse:true,cloze:true,grammar:true};}
 function updateDuolingoPreview(){
-  const pool=studyPool();const has=pool.length>0;
-  const tasks=DeutschSRS.selectTasks(pool,studyCount());
-  const dueCount=pool.filter(e=>Object.keys(e.reviewModes||{}).some(k=>DeutschSRS.isDue(e,k))||due(e)).length;
-  $('duoDueCount').textContent=`${dueCount} už preberaných položiek čaká na opakovanie.`;
-  $('duoPreview').innerHTML=has?`<strong>${pool.length} dostupných záznamov</strong><br>Dnešné kolo: ${tasks.length} otázok. Opakovanie, nové slová a rôzne typy otázok sa budú miešať. Ak spravíš chybu, otázka sa vráti navyše.`:'<strong>V tejto kombinácii nie sú záznamy.</strong><br>Zmeň lekciu alebo typ učiva.';
-  $('beginDuoBtn').disabled=!tasks.length;
+  const lesson=$('studyLesson').value;
+  const progress=duoLessonProgress(lesson);
+  $('duoLessonTitle').textContent=lessonLabel(lesson);
+  $('duoLessonNumbers').textContent=`${progress.mastered} / ${progress.total} zvládnutých`;
+  $('duoLessonBar').style.width=(progress.total?100*progress.mastered/progress.total:0)+'%';
+  $('duoLessonHint').textContent=progress.done?'Základný balík je hotový. Ak máš nahratú ďalšiu lekciu, odomkne sa automaticky.':
+    `Na ďalšiu lekciu potrebuješ zvládnuť všetkých ${progress.total} základných výrazov. Zvládnutie = oba smery prekladu a správne odpovede aspoň v dvoch dňoch.`;
+  const pool=studyPool(),plan=studyPlan();
+  $('newWordsField').classList.toggle('hidden',plan==='review');
+  $('studyPreview').closest('label').classList.toggle('hidden',plan==='review');
+  const tasks=DeutschSRS.selectGuidedTasks(pool,studyCount(),plan,studyNewWords(),guidedOptions());
+  const fresh=pool.filter(e=>!DeutschSRS.hasStudied(e)).length;
+  const practiced=pool.length-fresh;
+  const dueCount=pool.filter(e=>DeutschSRS.hasStudied(e)&&due(e)).length;
+  const added=new Set(tasks.filter(t=>!DeutschSRS.hasStudied(pool.find(e=>e.id===t.entryId))).map(t=>t.entryId)).size;
+  const byType=new Set(tasks.map(t=>pool.find(e=>e.id===t.entryId)?.type).filter(Boolean));
+  $('duoDueCount').textContent=`Nových: ${fresh} · Preberaných: ${practiced} · Na opakovanie: ${dueCount}.`;
+  const description=plan==='new'?`Najprv spoznáš ${added} nových výrazov rôznych druhov, potom ich preložíš.`:
+    plan==='review'?'Vracajú sa preberané výrazy; pokročilejšie úlohy sa zapínajú až po osvojení významu.':
+    `Zmiešaný tréning: ${added} nových výrazov + opakovanie; ${byType.size} druhy učiva podľa dostupných otázok.`;
+  $('duoPreview').innerHTML=tasks.length?`<strong>${countLabel(tasks.length,'otázka','otázky','otázok')} · ${countLabel(added,'nový výraz','nové výrazy','nových výrazov')}</strong><br>${description}`:
+    `<strong>${!pool.length?'Táto lekcia je zamknutá alebo ešte nie je nahratá.':plan==='review'?'Zatiaľ nemáš prebrané výrazy.':plan==='new'?'Už si prebral celý základný balík.':'Žiadne dostupné otázky.'}</strong><br>Skús iný plán alebo najprv pokračuj v aktuálnej lekcii.`;
+  $('beginDuoBtn').disabled=!tasks.length||!duoLessonUnlocked(lesson);
 }
 function startDuolingo(){
-  const tasks=DeutschSRS.selectTasks(studyPool(),studyCount());
-  if(!tasks.length){notify('Najprv naimportuj učivo alebo zmeň výber lekcie.',true);return;}
-  quiz={tasks,index:0,good:0,answered:0,mode:'type',resolved:false,style:'duo'};
+  const lesson=$('studyLesson').value;
+  if(!duoLessonUnlocked(lesson)){notify('Túto lekciu odomkneš dokončením predošlej lekcie.',true);return;}
+  const pool=studyPool(),plan=studyPlan();
+  const tasks=DeutschSRS.selectGuidedTasks(pool,studyCount(),plan,studyNewWords(),guidedOptions());
+  if(!tasks.length){notify('Pre tento plán nie sú dostupné otázky. Skús Zmiešané učenie.',true);return;}
+  const newAtStart=new Set(pool.filter(e=>!DeutschSRS.hasStudied(e)).map(e=>e.id));
+  quiz={tasks,index:0,good:0,answered:0,mode:'type',resolved:false,style:'duo',
+    plan,introEnabled:$('studyPreview').checked,previewedIds:new Set(),newAtStart};
   $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
   $('duoActiveHint').classList.remove('hidden');
   switchPage('trening');renderQuestion();
@@ -536,7 +667,7 @@ async function refreshApp(){
   const url=new URL(window.location.href);url.searchParams.set('dt_reload',Date.now().toString());window.location.replace(url.href);
 }
 
-const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.3 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
+const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.5 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
 async function copyText(text){
   try{await navigator.clipboard.writeText(text);notify('Prompt je skopírovaný. Vlož ho do ChatGPT a doplň zoznam slov.');}
   catch{const el=$('jsonInput');el.value=text;el.focus();el.select();notify('Automatické kopírovanie nie je dostupné. Prompt je označený, skopíruj ho pomocou Ctrl+C.');}
@@ -620,8 +751,11 @@ function bind(){
   $('refreshVersionBtn').addEventListener('click',refreshApp);
   $('startDuolingoHome').addEventListener('click',()=>{switchPage('ucenie');updateDuolingoPreview();});
   $('beginDuoBtn').addEventListener('click',startDuolingo);
+  $('introContinueBtn').addEventListener('click',completeIntroduction);
+  document.querySelectorAll('input[name="studyPlan"]').forEach(el=>el.addEventListener('change',updateDuolingoPreview));
+  $('studyNewWords').addEventListener('change',updateDuolingoPreview);
+  $('studyPreview').addEventListener('change',updateDuolingoPreview);
   $('studyLesson').addEventListener('change',updateDuolingoPreview);
-  ['studyNouns','studyVerbs','studyPhrases','studyOthers'].forEach(id=>$(id).addEventListener('change',updateDuolingoPreview));
   document.querySelectorAll('input[name="studyCount"]').forEach(i=>i.addEventListener('change',updateDuolingoPreview));
   ['quickAddBtn','libraryAddBtn','homeAddBtn'].forEach(id=>$(id).addEventListener('click',()=>showDialog()));
   $('homeDemoBtn').addEventListener('click',loadDemo);
@@ -633,7 +767,8 @@ function bind(){
   $('loadMoreEntriesBtn').addEventListener('click',()=>{libraryVisible+=LIBRARY_PAGE_SIZE;renderLibrary();});
   ['practiceLesson','practiceSection','practiceKind','practiceScope','practiceCount','practiceAll'].forEach(id=>$(id).addEventListener('change',renderQuizAvailability));
   $('practiceCount').addEventListener('input',updatePracticeSummary);
-  document.querySelectorAll('input[name="studyCategory"]').forEach(el=>el.addEventListener('change',renderQuizAvailability));
+  document.querySelectorAll('input[name="studyCategory"]').forEach(el=>el.addEventListener('change',()=>{ $('practiceKind').value='de_to_sk';renderQuizAvailability(); }));
+  $('practiceAdvanced').addEventListener('change',()=>{if(!$('practiceAdvanced').checked)$('practiceKind').value='de_to_sk';renderQuizAvailability();});
   $('practiceTopic').addEventListener('change',updatePracticeSummary);
   document.querySelectorAll('[data-count]').forEach(btn=>btn.addEventListener('click',()=>{
     $('practiceAll').checked=false;$('practiceCount').value=btn.dataset.count;updatePracticeSummary();
@@ -649,6 +784,7 @@ function bind(){
   $('beginPracticeBtn').addEventListener('click',startPractice);
   $('quitPracticeBtn').addEventListener('click',()=>{const s=quiz?.style;resetPractice();if(s==='duo')switchPage('ucenie');});
   $('checkAnswerBtn').addEventListener('click',checkTypedAnswer);
+  $('dontKnowBtn').addEventListener('click',dontKnow);
   $('answerInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkTypedAnswer();}});
   $('revealAnswerBtn').addEventListener('click',revealCard);
   $('gradeWrongBtn').addEventListener('click',()=>gradeCard(false));
