@@ -1,22 +1,50 @@
-# Deutsch Trainer 1.5 – Duolingo a Vlastný tréning bez zamieňania
+# Deutsch Trainer 1.8 – 15 úloh, levely, chytré opakovanie
 
-## Čo sa zmenilo
+Webová aplikácia na učenie nemčiny z vlastného slovníka a z učebnice **Begegnungen A2+**. Zachováva voľný Vlastný tréning a prináša výrazne prepracovaný Duolingo režim.
 
-**Duolingo režim** sa učí po lekciách. V každej lekcii vyberá základný balík najviac 40 výrazov zo všetkých štyroch kategórií (podstatné mená, slovesá, frázy, ostatné slová). Z voliteľnej časti B učebnice nevyberá do povinného jadra. V režime miešaného učenia sa striedajú nové a preberané položky. Nové slovo sa najprv ukáže s prekladom; potom sa skúša nemecky → slovensky. Opačný smer sa objaví pri opakovaní. Dopĺňačky, členy, množné čísla, Präteritum a Perfekt prichádzajú až po zvládnutí významu oboma smermi aspoň v dvoch dňoch, pri prvom výskyte s vysvetľujúcou kartičkou.
+## Čo je nové oproti 1.7
 
-**Postup do ďalšej lekcie:** Odmknutie vyžaduje zvládnutie celého základného balíka predchádzajúcej lekcie. Výraz sa považuje za zvládnutý pri aspoň dvoch správnych odpovediach DE→SK, aspoň jednej správnej SK→DE a úspechoch v aspoň dvoch rozličných dňoch. Aj odomknutá lekcia potrebuje vlastný import. Pokrok je viditeľný v paneli pri výbere lekcie. Pokrok získaný pred aktualizáciou sa počíta, pokiaľ v databáze obsahuje záznamy jednotlivých smerov.
+- **Presne 15 úloh na jedno Duolingo kolo**, počet sa už nenastavuje.
+- **Úrovne:** Každá knižná lekcia má pri 40 základných výrazoch 8 úrovní po 5 nových výrazov. Pri menšom počte slov sa počet úrovní automaticky upraví.
+- **Prvých 10 úloh:** päť úvodných výrazov, striedanie prekladov oboma smermi, párovanie piatich výrazov, dopĺňanie do celej vety z 3 možností a skladanie vety z klikateľných slov (s 2 rušivými slovami). Pre chýbajúcu celú vetu sa doplňovačka alebo skladanie nepoužije.
+- **Posledných 5 úloh:** opakovanie prednostne tých výrazov, pri ktorých si urobil chybu; ak ich nie je dosť, aplikácia zopakuje iné aktuálne alebo skôr problematické slová.
+- **Pravidlo postupu:** aspoň 12 správnych z 15 úloh. Ak nedosiahneš 12, zostávaš na rovnakej úrovni. Ak dokončíš poslednú úroveň Lekcie 1, odomkne sa Lekcia 2 (ak máš jej obsah naimportovaný).
+- **Predchádzajúce lekcie sa vracajú:** staršie problematické slová a slová pripravené na opakovanie sa objavujú aj v neskorších úrovniach.
+- **Gramatika prichádza postupne:** ak je sloveso preukázateľne zvládnuté a si vo vyššej úrovni, môže sa objaviť Perfekt; pred prvou takou otázkou sa zobrazí vysvetlenie. Začiatočníci sa najprv učia význam.
+- **Vlastný tréning zostáva voľný:** vyberáš si ľubovoľnú naimportovanú lekciu, slovíčka, podstatné mená, slovesá, frázy alebo gramatiku, počet otázok aj smer prekladu.
+- Zachované: uznávanie `ss` namiesto `ß`, umlauty bez diakritiky (`Schüler` = `schuler` alebo `schueler`), malé písmená, viac alternatívnych slovenských prekladov, Enter na potvrdenie / ďalšiu otázku.
 
-**Vlastný tréning** má všetky naimportované lekcie od začiatku dostupné, nezávisle od postupu v Duolingu. Výber „Slovesá“ znamená predvolene iba preklady slovies, „Frázy“ iba frázy, „Podstatné mená“ iba podstatné mená. Po prepnutí kategórie sa otázky vrátia na jednoduchý preklad DE→SK. Gramatiku možno zapnúť výlučne v rozbalenej časti „Pokročilé možnosti“.
+## Používanie
 
-## Aktualizácia (GitHub Pages)
+1. Na úvodnej stránke vyber **Duolingo režim**.
+2. Vyber aktuálnu **lekciu**. Zamknuté lekcie sa nedajú v Duolingu spustiť.
+3. Pozri si aktuálnu **úroveň z ôsmich** a klikni na **Spustiť Duolingo tréning**.
+4. Prvýkrát videné slová sa zobrazia s významom a prípadným príkladom. Prejdi 10 úloh, potom 5 záverečných opakovaní.
+5. Ak máš aspoň 12/15 správne, odomkne sa ďalšia úroveň. Po 8 úrovniach pokračuje ďalšia lekcia.
 
-1. Na starej verzii klikni **Import a zálohy → Stiahnuť kompletnú zálohu** a odlož JSON bezpečne (nezverejňuj ho v GitHub repozitári).
-2. Obsah ZIP rozbaľ. V repozitári `MartinTomcikMT/deutsch-trainer` nahraď v **hlavnom priečinku vetvy `main`** súbory `index.html`, `app.js`, `spaced.js`, `styles.css`, `sw.js` (ostatné súbory môžu zostať). Nenahrávaj vnorený priečinok `deutsch-trainer-v1.5` ako jediný súbor.
-3. Na GitHub Pages zostáva nastavené `main` a `/ (root)`. Po publikovaní otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.5` v súkromnom okne a skontroluj štítok **v1.5**.
-4. V bežnom Chrome obnov stránku cez **Ctrl + Shift + R** alebo tlačidlom **Obnoviť aplikáciu ↻**. Nevymazávaj IndexedDB ani údaje stránky!
+## Technické informácie a bezpečnosť údajov
 
-Používa sa pôvodná lokálna databáza IndexedDB `deutsch-trainer-v1`, JSON formát a verzia 1. Existujúce slovíčka a história odpovedí sa nemažú. Údaje sa zatiaľ nesynchronizujú medzi zariadeniami.
+Aplikácia používa pôvodnú lokálnu IndexedDB databázu s názvom `deutsch-trainer-v1`. Verzia databázovej schémy sa zvyšuje **z 1 na 2**, len kvôli novej dátovej kolekcii `meta` pre postup úrovní. Staré slovíčka, odpovede a história zostávajú v rovnakých kolekciách. Nové úrovne 1.8 sa začnú od prvej úrovne; predchádzajúce správne a nesprávne odpovede sa nemažú a ďalej sa používajú pri opakovaní. Snapshot základného balíka 40 slov sa ukladá po prvom začatí lekcie, aby ďalšie importy nemiešali poradie úrovní.
 
-## Poznámka
+**Cloudová databáza NIE JE vytvorená.** Toto vydanie neobsahuje Supabase, online prihlásenie ani synchronizáciu medzi zariadeniami. Slovník aj pokrok sú stále iba v prehliadači. Kompletná JSON záloha od 1.8 obsahuje okrem `entries` a `attempts` aj `duoProgress`, takže vie obnoviť aj dokončené úrovne. Aplikácia automaticky nič neodkladá na externý server.
 
-Základný balík je praktický výber z importovaného materiálu, nie celý obsah 758 položiek prvej lekcie. Väčší slovník zostáva dostupný v Môj slovník a vo Vlastnom tréningu. Po pridaní nových záznamov sa môže zmeniť výber základného balíka; preto si pred výraznou úpravou importov odlož zálohu.
+## Aktualizácia GitHub Pages
+
+1. **Najprv** v existujúcej aplikácii otvor **Import a zálohy → Stiahnuť kompletnú zálohu** a odlož súbor.
+2. Zatvor ostatné karty s Deutsch Trainer, aby neblokovali aktualizáciu IndexedDB.
+3. V repo `MartinTomcikMT/deutsch-trainer`, vetva `main`, priečinok `/ (root)`, nahraď z tohto balíka súbory:
+   - `index.html`
+   - `styles.css`
+   - `app.js`
+   - `spaced.js`
+   - `sw.js`
+   - **`duo-game.js` (nový súbor, musíš pridať!)**
+4. Ostatné súbory v ZIP (`manifest.webmanifest`, ikony, demo JSON) môžeš ponechať alebo tiež aktualizovať; hlavne neumiestni aplikáciu do ďalšieho priečinka.
+5. Po ukončení GitHub Pages nasadenia otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.8` a skontroluj štítok `v1.8`.
+6. Ak vidíš starú verziu, použij tlačidlo **Obnoviť aplikáciu**, prípadne `Ctrl + Shift + R`; **nepoužívaj Vymazať údaje stránky**, prišiel by si o lokálnu databázu.
+
+### Testovanie
+
+Overené v testovacom prehliadači s 1617 importovanými záznamami z troch lekcií: 15 úloh, párovanie piatich párov, doplňovačka s tromi možnosťami, skladanie vety vrátane rušivých slov, opakovanie na konci, výsledok 14/15 a odomknutie ďalšej úrovne, nulový postup pri neúspešnom kole, zámok lekcie 2/3, dostupnosť Lekcie 3 vo Vlastnom tréningu, zachovanie tolerantného pravopisu. JavaScript prešiel syntaktickou kontrolou.
+
+**Obmedzenie testov:** testovacie prostredie blokuje otvorenie lokálnej URL, a preto migrácia databázy IndexedDB a nasadenie na GitHub Pages nie sú plne otestované v reálnom pôvodnom prehliadači. Pred aktualizáciou preto urob zálohu.

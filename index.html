@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="application-name" content="Deutsch Trainer 1.5">
+  <meta name="application-name" content="Deutsch Trainer 1.8">
   <meta name="theme-color" content="#122d3d">
   <meta name="description" content="Deutsch Trainer – osobný slovník a precvičovanie nemčiny.">
   <title>Deutsch Trainer · Tvoja nemčina</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" type="image/png">
-  <link rel="stylesheet" href="./styles.css?v=1.5.0">
-  <script src="./spaced.js?v=1.5.0" defer></script>
-  <script src="./app.js?v=1.5.0" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=1.8.0">
+  <script src="./spaced.js?v=1.8.0" defer></script>
+  <script src="./duo-game.js?v=1.8.0" defer></script>
+  <script src="./app.js?v=1.8.0" defer></script>
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -31,14 +32,14 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="tip-card"><span class="tip-icon">✦</span><strong>Malý krok každý deň</strong><p>Aj 10 minút pravidelného precvičovania posunie tvoju nemčinu ďalej.</p></div>
-        <span class="version">VERZIA 1.5 · lekcie a režimy</span>
+        <span class="version">VERZIA 1.8 · levely a 15 úloh</span>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div class="breadcrumb" id="breadcrumb">Osobná učebnica <span>/</span> Prehľad</div>
-        <div class="topbar-actions"><span class="release-pill" aria-label="Verzia aplikácie">v1.5</span> <button class="version-refresh" type="button" id="refreshVersionBtn" title="Stiahnuť najnovšiu verziu webových súborov; údaje v slovníku sa nemažú">Obnoviť aplikáciu ↻</button><span class="local-pill"><span class="dot"></span> Ukladá sa v prehliadači</span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
+        <div class="topbar-actions"><span class="release-pill" aria-label="Verzia aplikácie">v1.8</span> <button class="version-refresh" type="button" id="refreshVersionBtn" title="Stiahnuť najnovšiu verziu webových súborov; údaje v slovníku sa nemažú">Obnoviť aplikáciu ↻</button><span class="local-pill"><span class="dot"></span> Ukladá sa v prehliadači</span><button class="btn btn-primary btn-small" id="quickAddBtn">+ Pridať záznam</button></div>
       </header>
       <div class="content-body">
         <div id="notice" role="status" aria-live="polite" class="notice hidden"></div>
@@ -81,7 +82,7 @@
 
         <section class="page" id="page-ucenie" aria-label="Duolingo režim">
           <div class="eyebrow">TVÔJ KAŽDODENNÝ TRÉNING</div><h1>Duolingo režim <span class="heading-star">✳</span></h1>
-          <p class="page-lead">Tu sa učíš postupne: nové slová s prekladom, opakovanie, preklady oboma smermi, frázy a až neskôr gramatika. Otvorenie ďalšej lekcie závisí od zvládnutia základného balíka predchádzajúcej lekcie.</p>
+          <p class="page-lead">Jeden level = 15 rôznych cvičení. Najprv sa naučíš päť výrazov a precvičíš ich rôznymi spôsobmi; posledných päť úloh zopakuje najmä tvoje chyby. Každá lekcia má osem levelov.</p>
           <div class="practice-setup duo-setup">
             <div class="setup-card">
               <div class="step-eyebrow">UČENIE · PRIPRAV SI DNEŠNÉ KOLO</div>
@@ -90,25 +91,18 @@
                 <div class="lesson-progress-card"><div class="lesson-progress-head"><strong id="duoLessonTitle">Lekcia 1</strong><span id="duoLessonNumbers">0 / 40 zvládnutých</span></div><div class="lesson-progress-track"><span id="duoLessonBar"></span></div><p id="duoLessonHint">Na odomknutie ďalšej lekcie zvládni základný balík tejto lekcie.</p></div>
                 <p class="study-reassure"><strong>Duolingo mieša všetko:</strong> podstatné mená, slovesá, ostatné slovíčka a frázy. Ľahšie preklady prídu skôr, dopĺňanie viet a minulé časy až po osvojení významu.</p>
               </div>
-              <div class="setup-section"><div class="step-title"><span class="step-number">2</span><strong>Čo chceš dnes robiť?</strong></div>
-                <div class="study-plans" role="group" aria-label="Režim učenia">
-                  <label><input type="radio" name="studyPlan" value="new"><span><strong>🌱 Učiť nové</strong><small>Najprv kartička, potom preklad oboma smermi</small></span></label>
-                  <label><input type="radio" name="studyPlan" value="review"><span><strong>↻ Opakovať preberané</strong><small>Už precvičené slová, prednostne tie na opakovanie</small></span></label>
-                  <label><input type="radio" name="studyPlan" value="mixed" checked><span><strong>✳ Zmiešané učenie</strong><small>Opakovanie + malé množstvo nových slov</small></span></label>
-                </div>
-                <label class="field" id="newWordsField"><span>Koľko nových výrazov najviac v jednom kole?</span><select id="studyNewWords"><option value="3" selected>3 nové slová – odporúčané na začiatok</option><option value="5">5 nových slov</option><option value="8">8 nových slov</option></select></label>
-                <label class="preview-toggle"><input type="checkbox" id="studyPreview" checked> Ukázať význam a príklad pred prvou otázkou z nového slova</label>
-                <p class="study-reassure">Systém strieda oba smery prekladu a typy slov. <strong>Gramatické tvary nikdy neprídu pri prvom stretnutí so slovesom.</strong> Keď ich zvládneš ako slovíčka, objavia sa s úvodnou kartičkou a vysvetlením.</p>
+              <div class="setup-section duo-level-section">
+                <div class="step-title"><span class="step-number">2</span><strong>Tvoje úrovne v lekcii</strong></div>
+                <div id="duoLevelGrid" class="duo-level-grid" aria-label="Úrovne lekcie"></div>
+                <p class="study-reassure">Každé kolo má <strong>15 cvičení</strong>: 10 rôznorodých úloh a potom 5 opakovaní. Na ďalšiu úroveň potrebuješ <strong>12 správnych odpovedí z 15</strong>. Počas učenia sa ti nové slová najprv zobrazia s prekladom.</p>
               </div>
-              <div class="setup-section"><div class="step-title"><span class="step-number">3</span><strong>Maximálny počet otázok</strong></div>
-                <div class="study-counts"><label><input type="radio" name="studyCount" value="5"> 5 otázok</label><label><input type="radio" name="studyCount" value="10" checked> 10 otázok</label><label><input type="radio" name="studyCount" value="15"> 15 otázok</label><label><input type="radio" name="studyCount" value="20"> 20 otázok</label></div>
-              </div>
+              <div class="duo-round-steps"><span>1–10 · nová látka, preklad, párovanie a skladanie viet</span><span>11–15 · záverečné opakovanie chýb</span></div>
               <div class="selection-summary" id="duoPreview">Načítavam učivo…</div>
               <button class="btn btn-primary btn-large begin-training" id="beginDuoBtn">Spustiť Duolingo tréning →</button>
             </div>
-            <aside class="setup-aside"><span class="big-glyph">↻</span><h3>Najprv zvládni základ, potom ďalšia lekcia.</h3>
-              <p>Každá lekcia má základný balík najviac 40 výrazov zo všetkých typov. Na ďalšiu prejdeš po ich zvládnutí. Pokročilé a doplnkové slová môžeš kedykoľvek precvičovať vo Vlastnom tréningu.</p>
-              <p><strong>Kedy sa vrátia?</strong> Po správnej odpovedi približne o 1, 3, 7, 14 alebo viac dní. Po chybe skôr.</p>
+            <aside class="setup-aside"><span class="big-glyph">↻</span><h3>Postupuj po úrovniach bez čakania dní.</h3>
+              <p>Každá lekcia má osem úrovní po päť základných výrazov. Po úspešnom zvládnutí poslednej úrovne sa odomkne ďalšia lekcia. Vlastný tréning zostáva bez obmedzení.</p>
+              <p><strong>Kedy sa vrátia?</strong> Chyby zopakuješ na konci aktuálneho kola a problematické výrazy sa vracajú aj v ďalších kolách.</p>
               <div class="aside-stat" id="duoDueCount"></div>
             </aside>
           </div>
@@ -164,7 +158,7 @@
                 <div class="form-grid">
                   <label class="field"><span>Téma</span><select id="practiceTopic"><option value="all">Všetky témy</option></select></label>
                   <label class="field"><span>Časť učebnice</span><select id="practiceSection"><option value="all">Všetky časti A–D</option><option value="A">A · Témy a úlohy</option><option value="B">B · Voliteľné učivo</option><option value="C">C · Gramatika a cvičenia</option><option value="D">D · Opakovanie</option></select></label>
-                  <label class="field"><span>Odpovedanie</span><select id="practiceMode"><option value="type">Napísať odpoveď</option><option value="card">Kartička – odkryť odpoveď</option></select></label>
+                  <label class="field"><span>Odpovedanie</span><select id="practiceMode"><option value="type">Napísať odpoveď</option><option value="card">Kartička – odkryť odpoveď</option><option value="choices">Vybrať z 3 možností (pri prekladoch)</option></select></label>
                   <label class="field"><span>Výber záznamov</span><select id="practiceScope"><option value="all">Všetky vybrané záznamy</option><option value="due">Na opakovanie</option><option value="wrong">Problematické slová</option></select></label>
                 </div>
               </details>
@@ -174,8 +168,8 @@
             <aside class="setup-aside"><span class="big-glyph">✳</span><h3>Čím častejšie cvičíš, tým viac vieš.</h3><p>Pri každom zázname sa sledujú odpovede. Nesprávne zodpovedané slová sa vracajú skôr.</p><div id="quizAvailable" class="aside-stat"></div><p class="aside-note">Filtre nemenia ani nemažú slovník. Vyberajú iba otázky do jedného tréningu.</p></aside>
           </div>
           <div id="practiceActive" class="practice-active hidden" aria-live="polite">
-            <div class="practice-top"><button class="text-action" id="quitPracticeBtn">← Späť</button><span id="practiceProgressLabel">Otázka 1 / 10</span></div>
-            <div id="duoActiveHint" class="duo-active-hint hidden">✳ Duolingo · slová a druhy otázok sa striedajú; nové tvary sa najprv vysvetlia</div><div class="progress"><div id="progressBar"></div></div>
+            <div class="practice-top"><button class="text-action" id="quitPracticeBtn">← Späť</button><span id="practiceProgressLabel">Otázka 1 / 15</span></div>
+            <div id="duoActiveHint" class="duo-active-hint hidden">✳ Duolingo · 1–10 učenie a pestré úlohy · 11–15 opakovanie chýb</div><div class="progress"><div id="progressBar"></div></div>
             <div id="introPreview" class="intro-preview hidden" aria-live="polite">
               <span class="intro-kicker">🌱 NOVÉ SLOVO · NAJPRV SI HO POZRI</span>
               <p class="intro-instruction">Prečítaj si oba významy. Keď budeš pripravený, skúsiš ho preložiť bez pomôcky.</p>
@@ -187,14 +181,17 @@
               <button class="btn btn-primary btn-large" id="introContinueBtn">Už som si to pozrel – idem skúsiť →</button>
             </div>
             <div class="question-card" id="questionCard"><div class="question-type" id="questionType">PREKLAD</div><h2 id="questionPrompt"></h2><div id="questionContext"></div>
-              <div id="typedAnswerBox"><label for="answerInput" class="field-label">Tvoja odpoveď</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Napíš odpoveď..."><div class="answer-actions"><button class="btn btn-primary btn-large" id="checkAnswerBtn">Skontrolovať</button><button class="btn btn-outline" id="dontKnowBtn" type="button">Neviem – ukáž odpoveď</button></div></div>
+              <div id="typedAnswerBox"><label for="answerInput" class="field-label">Tvoja odpoveď</label><p class="input-hint">Veľké písmená, umlauty ani ß nie sú povinné (ß = ss). <kbd>Enter</kbd> = skontrolovať / ďalšia otázka.</p><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Napíš odpoveď..."><div class="answer-actions"><button class="btn btn-primary btn-large" id="checkAnswerBtn">Skontrolovať</button><button class="btn btn-outline" id="dontKnowBtn" type="button">Neviem – ukáž odpoveď</button></div></div>
+              <div id="choiceAnswerBox" class="hidden"><div class="choice-instruction">Vyber správnu odpoveď z troch možností:</div><div id="choiceAnswers" class="choice-answers" role="group" aria-label="Tri možnosti odpovede"></div><p class="choice-help">Ak zatiaľ nevieš, vyber si možnosť a po odpovedi uvidíš správny preklad.</p></div>
+              <div id="matchAnswerBox" class="hidden"><p class="choice-instruction">Nájdi správne páry. Klikni najprv na nemecký, potom na slovenský výraz.</p><div class="matching-grid"><div id="matchLeft" class="match-list"></div><div id="matchRight" class="match-list"></div></div><p id="matchFeedback" class="match-feedback" role="status"></p></div>
+              <div id="builderAnswerBox" class="hidden"><p class="choice-instruction">Poskladaj nemeckú vetu z ponúknutých slov. Dve slová sú navyše.</p><div id="builderChosen" class="builder-chosen" aria-label="Zostavená veta"></div><div id="builderBank" class="builder-bank" aria-label="Ponúknuté slová"></div><div class="answer-actions"><button type="button" class="btn btn-primary" id="builderCheckBtn">Skontrolovať vetu</button><button type="button" class="btn btn-outline" id="builderClearBtn">Vymazať výber</button><button type="button" class="btn btn-outline" id="builderDontKnowBtn">Neviem – ukáž odpoveď</button></div></div>
               <div id="flashcardAnswerBox" class="hidden"><button class="flashcard-reveal" id="revealAnswerBtn">Klikni a odhaľ správnu odpoveď <span>↻</span></button></div>
               <div id="answerResult" class="answer-result hidden"></div>
               <div id="gradeButtons" class="grade-buttons hidden"><button class="btn btn-danger-outline" id="gradeWrongBtn">✕ Nevedel som</button><button class="btn btn-success" id="gradeCorrectBtn">✓ Vedel som</button></div>
               <button class="btn btn-primary btn-large hidden" id="nextQuestionBtn">Ďalšia otázka →</button>
             </div>
           </div>
-          <div id="practiceFinished" class="finished-card hidden"><span class="big-glyph">✳</span><div class="eyebrow">HOTOVO</div><h2>Výborne, tréning je za tebou!</h2><p id="practiceSummary"></p><div class="row-actions center"><button class="btn btn-primary" id="practiceAgainBtn">Precvičiť znova</button><button class="btn btn-outline" id="practiceHomeBtn">Späť na prehľad</button></div></div>
+          <div id="practiceFinished" class="finished-card hidden"><span class="big-glyph">✳</span><div class="eyebrow">HOTOVO</div><h2>Výborne, tréning je za tebou!</h2><p id="practiceSummary"></p><div id="duoFinishInfo" class="duo-finish-info hidden"></div><div class="row-actions center"><button class="btn btn-primary" id="practiceAgainBtn">Precvičiť znova</button><button class="btn btn-outline" id="practiceHomeBtn">Späť na prehľad</button></div></div>
         </section>
 
         <section class="page" id="page-statistiky" aria-label="Štatistiky učenia">

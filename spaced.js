@@ -1,4 +1,4 @@
-/* Deutsch Trainer 1.5: guided introduction plus spaced repetition. */
+/* Deutsch Trainer 1.7: guided introduction plus spaced repetition. */
 'use strict';
 const DeutschSRS = (() => {
   const DAY=86400000;
@@ -14,7 +14,7 @@ const DeutschSRS = (() => {
     return !!s?.dueAt && new Date(s.dueAt).getTime()<=now.getTime();
   }
   function isNew(entry,kind){return !state(entry,kind)?.attempts;}
-  function apply(entry,kind,correct,now=new Date()) {
+  function apply(entry,kind,correct,now=new Date(),method='recall') {
     if(!entry.reviewModes||typeof entry.reviewModes!=='object')entry.reviewModes={};
     const prev=state(entry,kind)||{};
     const streak=correct?(prev.streak||0)+1:0;
@@ -22,9 +22,14 @@ const DeutschSRS = (() => {
     const days=[...(Array.isArray(prev.successDays)?prev.successDays:[])];
     const k=todayKey(now);
     if(correct&&!days.includes(k))days.push(k);
+    // Legacy responses were typed; retain them as valid recall history.
+    const recallDays=[...(Array.isArray(prev.recallSuccessDays)?prev.recallSuccessDays:(prev.successDays||[]))];
+    if(correct&&method!=='choices'&&!recallDays.includes(k))recallDays.push(k);
     entry.reviewModes[kind]={
       attempts:(prev.attempts||0)+1,
       correct:(prev.correct||0)+(correct?1:0),
+      choiceCorrect:(prev.choiceCorrect||0)+(correct&&method==='choices'?1:0),
+      recallSuccessDays:recallDays.slice(-20),
       wrong:(prev.wrong||0)+(correct?0:1),
       streak,
       intervalDays,
@@ -37,8 +42,10 @@ const DeutschSRS = (() => {
   function mastered(entry){return Object.values(entry.reviewModes||{}).some(s=>s && s.streak>=3 && s.intervalDays>=7 && (s.successDays||[]).length>=2);}
   function duoMastered(entry){
     const a=state(entry,'de_to_sk')||{}, b=state(entry,'sk_to_de')||{};
-    const days=new Set([...(a.successDays||[]),...(b.successDays||[])]);
-    return Number(a.correct||0)>=2 && Number(b.correct||0)>=1 && days.size>=2;
+    const recalled=s=>Math.max(0,Number(s.correct||0)-Number(s.choiceCorrect||0));
+    const recallDays=s=>Array.isArray(s.recallSuccessDays)?s.recallSuccessDays:(s.successDays||[]);
+    const days=new Set([...recallDays(a),...recallDays(b)]);
+    return recalled(a)>=2 && recalled(b)>=1 && days.size>=2;
   }
   function summarize(attempts,entries,now=new Date()){
     const today=todayKey(now);

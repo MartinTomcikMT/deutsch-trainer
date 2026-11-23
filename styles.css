@@ -81,3 +81,44 @@
 .lesson-progress-track span{display:block;height:100%;background:#2d7c80;transition:width .25s ease;border-radius:12px}
 .lesson-progress-card p{font-size:.84rem;line-height:1.5;margin:0;color:var(--muted,#667680)}
 #studyLesson option:disabled{color:#8b9299}
+
+/* Accessible help for keyboard-first answers (v1.6). */
+.input-hint {font-size: .83rem; color: var(--muted, #69737a); line-height: 1.45; margin: .15rem 0 .55rem;}
+.input-hint kbd {display:inline-block; padding:.05rem .38rem; border:1px solid #bac4c9; border-radius:5px; background:#f4f7f7; font:inherit; font-weight:700;}
+
+/* v1.7: three-option answers */
+.study-answer-format{margin-top:17px}
+.choice-instruction{font-size:12px;font-weight:700;color:#3d6269;margin:0 0 12px}
+.choice-answers{display:grid;gap:10px}
+.choice-option{display:flex;align-items:center;text-align:left;gap:13px;min-height:62px;border:1.5px solid #d1e0dc;border-radius:12px;padding:13px 16px;background:#fff;color:var(--text);font-size:14px;font-weight:700;white-space:normal;line-height:1.55;cursor:pointer;transition:background .12s,border-color .12s}
+.choice-option:hover:not(:disabled),.choice-option:focus-visible{background:#e9f7f1;border-color:#459a86;outline:2px solid #d4eee5}
+.choice-letter{flex-shrink:0;display:inline-flex;justify-content:center;align-items:center;background:#e7f1ed;color:#396d65;width:31px;height:31px;border-radius:8px;font-weight:800}
+.choice-option.choice-correct{border-color:#419577;background:#e8f7ed;color:#166044}
+.choice-option.choice-wrong{border-color:#dc8f7d;background:#fff0ed;color:#ad3e32}
+.choice-option:disabled{cursor:default;opacity:1}
+.choice-help{font-size:11px;color:#71878b;margin:12px 0 0}
+@media(max-width:580px){.choice-option{font-size:13px;padding:12px;min-height:55px}}
+
+/* v1.8: sequential Duolingo levels, matching and sentence building */
+.duo-level-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.duo-level-chip{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid #dce6e6;background:#f7f9f9;padding:11px 6px;border-radius:12px;color:#8a999b;font-size:12px}
+.duo-level-chip strong{font-size:18px}
+.duo-level-chip.done{background:#e8f6f0;border-color:#7bc4a7;color:#1f7357}
+.duo-level-chip.current{background:#e5f3f7;border:2px solid #3e8aa0;color:#1d5d74}
+.duo-round-steps{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}
+.duo-round-steps span{background:#edf3f5;border-radius:99px;padding:9px 14px;font-size:12px;font-weight:700;color:#346675}
+.duo-finish-info{margin-top:18px;padding:16px;border-radius:12px;border:1px solid #a3d8bc;background:#edf9f2;color:#25624d}
+.duo-finish-info p{margin:8px 0 0}
+.matching-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.match-list{display:flex;flex-direction:column;gap:10px}
+.match-button,.builder-token{font:inherit;cursor:pointer;border:1.5px solid #d0dedc;background:#fff;color:#24434c;border-radius:12px;padding:12px 10px;min-height:54px;line-height:1.3;text-align:center}
+.match-button.selected{border-color:#328d94;background:#e3f4f6}
+.match-button.matched{border-color:#69b99b;background:#e5f5ed;color:#1a7857}
+.match-button:disabled{cursor:default;opacity:.7}
+.match-feedback{min-height:20px;font-size:13px;color:#397579}
+.builder-chosen{min-height:72px;border:2px dashed #adc3c7;border-radius:12px;margin:15px 0;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;align-items:flex-start;gap:8px;color:#75888d}
+.builder-bank{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
+.builder-token{min-height:45px;padding:10px 13px;font-size:14px;font-weight:650}
+.builder-token.used{opacity:.3;cursor:default}
+.builder-chosen .builder-token{background:#e8f5ed;border-color:#79b8a0}
+@media(max-width:580px){.duo-level-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.matching-grid{gap:7px}.match-button{padding:8px 5px;font-size:12px;min-height:62px}}
