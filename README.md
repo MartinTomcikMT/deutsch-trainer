@@ -1,38 +1,57 @@
-# Deutsch Trainer 1.9.3 – aktualizácia učenia A2+
+# Deutsch Trainer 1.9.41 – náročnejšie míľniky slovnej zásoby
 
-**Kompletná lokálna verzia aplikácie.** Vychádza z 1.9.2 a obsahuje aj všetky jej funkcie. Nepotrebuje Supabase, Google OAuth ani ďalší účet. Cloudová synchronizácia a prihlásenie sú stále plánované pre **2.0**.
+**Kompletná lokálna PWA.** Zachováva všetky funkcie 1.9.3 vrátane 150 prioritných výrazov na lekciu, 15 otázok v levele, záverečného 50-otázkového testu, tolerancie umlautov a tlačidiel na vymazanie progresu/databázy. **Nepotrebuje Supabase ani Google prihlasovanie.**
 
-## Novinky 1.9.3
+## Novinka 1.9.41 — zlato 2 000, diamant 2 500
 
-1. **Výraznejšie otázky a celé vety:** Hlavný text na preklad má na desktopoch približne 29–43 px, na mobile najmenej 27 px; sprievodné informácie sú čitateľnejšie. Pri skladaní slov je veľkým písmom slovenská veta, ktorú má študent preložiť.
-2. **Vyvážené opakovanie:** Z doterajších slov vyberá zmes problematických, starších/opakovaných aj správne zvládnutých. Chybné výrazy majú vyššiu prioritu, nie však 100 % otázok. Po 10 úvodných úlohách nasleduje 5 záverečných opakovaní; medzi nimi sú pri dostupnosti aj dobre zvládnuté výrazy.
-3. **Gramatika už od Levelu 3:** Do úvodných desiatich úloh sa pravidelne vkladajú 2 otázky podľa rotácie Perfekt, Präteritum, články/plurál a určité členy v Akkusatíve/Datíve. Ak je to možné, na záverečnom opakovaní pribudne ešte gramatika. Použité tvary pochádzajú z naimportovaných polí `perfect`, `preterite`, `article` a `plural`. Pred prvým skúšaním neznámeho gramatického tvaru zobrazí náhľad so správnym riešením. **Úplné skloňovanie prídavných mien a všetkých osobných zámen zatiaľ nie je implementované.**
-4. **Záverečný test lekcie:** Po dokončení všetkých 30 (alebo viac pri migrácii) levelov nasleduje test s **50 otázkami**. Test vyberá výrazové kategórie a typy cvičení naprieč *celou* prioritnou slovnou zásobou danej lekcie; nepýta sa na všetkých 150 výrazov jednotlivo. Obsahuje **minimálne 13 gramatických úloh** (4 Perfekt, 4 Präteritum, 2 skloňovanie člena, 2 plurál, 1 člen), preklady aj úlohy s vetami, ak sú dostupné. Na postup treba aspoň **40/50** a **6 správnych gramatických odpovedí**. Pri neúspechu sa test dá zopakovať s iným výberom. Až úspešný test odomkne nasledujúcu lekciu.
-5. **Achievements 42 odznakov:** Viacstupňové dlhodobé ciele pre počet otázok, správne odpovede, počet rôznych výrazov, dokončené levely, záverečné testy, bezchybné 15/15 kolá, denné série a jednotlivé gramatické oblasti. Napredovanie vidíš na indikátoroch. Dlhodobá séria zostáva započítaná aj po jej prerušení.
+V sekcii **Štatistiky → Achievements** pribudla samostatná karta **Osvojená slovná zásoba** s progressbarom a najbližším cieľom. Slovníkové odznaky sa počítajú zo **skutočne osvojených rôznych výrazov**, nie z množstva kliknutí alebo z počtu odpovedí.
 
-## Úplné pokrytie *Begegnungen A2+*?
+| Osvojených výrazov | Odznak |
+| ---: | --- |
+| 100 | 🌱 Prvý míľnik |
+| 250 | 🥉 Bronz |
+| 500 | 🥉 Bronz+ |
+| 1 000 | 🥈 Striebro |
+| 1 500 | 🥈 Striebro+ |
+| **2 000** | **🥇 Zlato** |
+| **2 500** | **💎 Diamant** |
 
-Prioritný výber má **150 položiek v každej z ôsmich lekcií**, ale **nie je to úplný výpis každej povinnej frázy, každého príkladu alebo gramatického pravidla**. Obsah lekcií sa líši, pevné číslo 150 je praktická priorita, nie pedagogický dôkaz úplnosti. Údaje obsahujú 32–45 slovies na lekciu a pri všetkých prioritných slovesách sú vyplnené `perfect` a `preterite`; zatiaľ sú to prevažne **tvary er/sie/es**, nie cvičenia časovania všetkých osôb. Pri podstatných menách je vyplnený člen a pri väčšine aj plurál. V budúcej verzii má zmysel vykonať samostatný audit povinných úloh častí A/C a záverečných prehľadov D každého kapitolu.
+**Čo je osvojený výraz:** minimálne dva úspešné **samostatné** preklady z nemčiny do slovenčiny, minimálne jeden opačným smerom, a úspechy minimálne v dvoch rôznych dňoch. Výber z ponúknutých možností nie je písanie. Počítajú sa všetky záznamy v lokálnej databáze (aj rozširujúce), nie iba 150 prioritných na lekciu. Počítadlo **Osvojené** v štatistikách teraz používa to isté prísnejšie kritérium, takže po aktualizácii môže ukázať nižšie číslo; žiadna história sa nevymazala. Diamant s pevným cieľom 2 500 je možné získať len pri slovníku s aspoň 2 500 položkami.
 
-## Zálohy, import a kompatibilita
+Pôvodný odznak „Rôzne výrazy“ (počet iba raz precvičených položiek) bol nahradený jediným jednoduchým míľnikom „Spoznal som 500 výrazov“, aby sa nemýlil s naozaj osvojenými slovami. Ostatné úspechy (odpovede, série, gramatika, denné úlohy, kategórie, skúšky) zostávajú.
 
-- Pred aktualizáciou si vždy stiahni **Import a zálohy → Stiahnuť kompletnú zálohu**.
-- Ak máš už najnovšiu databázu 1.9.2, **nemusíš nanovo importovať JSON**. Aplikácia pri aktualizácii mení plánovanie cvičení, nie slovník.
-- Pre nový začiatok je v ZIP `A2plus-jadro-lekcie-1-8.json` (iba prioritné) a `A2plus-kompletny-slovnik-1-8.json` (prioritné a rozšírené). Importuj len jeden z nich. `ukazkove-slovicka.json` je demonštračný súbor a nemusíš ho importovať.
-- História, progres, dokončené levely aj obe resetovacie funkcie zostávajú kompatibilné s 1.9.2; záverečný test sa zavádza až teraz. Ak si mal už všetky levely kapitoly, po aktualizácii sa ti zobrazí záverečný test pred odomknutím ďalšej kapitoly.
-- Údaje zostávajú v **IndexedDB tvojho prehliadača**. Automatické cloudové zálohovanie zatiaľ nie je dostupné.
+**Ochrana postupu:** žiadna zmena databázovej schémy; achievements sa vypočítajú zo zachovaných údajov. Stačí aktualizovať súbory, nie znovu importovať JSON. Pred aktualizáciou si aj tak exportuj kompletnú zálohu. Rozbehnuté kolo dokonči ešte v starej verzii.
 
-## Nahratie na GitHub Pages
+## Inštalácia 1.9.41
 
-1. Rozbaľ ZIP a nahraj obsah do **koreňa vetvy `main`** existujúceho repo `MartinTomcikMT/deutsch-trainer`.
-2. Dôležité sú všetky aplikačné súbory: `index.html`, `app.js`, `duo-game.js`, `spaced.js`, `extras.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, `.nojekyll`, priečinok `icons` a `ukazkove-slovicka.json`. Súbory JSON so slovníkmi zostávajú na stiahnutie alebo import, nie sú automaticky načítané pri štarte.
-3. Otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.9.3` a skontroluj štítok **v1.9.3**. Pri zobrazovaní starej verzie použi **Obnoviť aplikáciu** alebo v prehliadači Ctrl+Shift+R; nevymazávaj údaje stránky.
-4. Spusti aspoň jeden level Duolinga a skontroluj úlohy aj Štatistiky → Úspechy a odznaky.
+Nahraj súbory aplikácie do koreňa repozitára, najmä `index.html`, `app.js`, `extras.js`, `styles.css`, `duo-game.js`, `spaced.js` a `sw.js`, a potom otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.9.41`. V ZIP sú tiež oba pôvodné slovníkové JSON súbory; ak ich už máš importované, **znovu ich neimportuj**. Nevymazávaj site data / IndexedDB.
 
-## Plánované vyššie verzie
+---
 
-Pozri `ROADMAP_2.0-3.0.md` v tomto ZIP. Súčasná verzia 1.9.3 **ešte neumožňuje** prihlásenie cez Google ani štúdium ľubovoľných jazykových párov. Importy iných kníh sa v 1.x nemajú miešať do rovnakých čísel lekcií, pretože zatiaľ neexistuje samostatný identifikátor kurzu.
+## Funkcie prevzaté z 1.9.4
 
-### Overenie
+1. **Skladanie viet funguje aj vo vyšších leveloch.** Opravená chyba, keď gramatické otázky odstránili `buildSentence` a `clozeChoice` z desať-otázkovej prvej fázy. Teraz je pre každý dostupný vhodný príklad rezervovaný priestor na skladanie celej vety, doplnenie slova z 3 možností, párovanie 5 dvojíc, nové preklady a gramatiku. Ak v aktuálne preberaných výrazoch nie je vhodná veta, použije sa preberaná alebo iná veta z tej istej importovanej lekcie. Úplne nová pomocná veta sa najprv zobrazí s prekladom.
+2. **Dlhodobé míľniky:** prvých 100, 250, 500, 1000 odpovedí; ďalej 2500, 5000, 10000 až 25000. Samostatne sa sledujú správne odpovede, skutočne osvojené výrazy, dokončené levely, bezchybné kolá a gramatika.
+3. **Denná séria a rekordy:** aktuálna séria, najdlhšia séria a história predchádzajúcich sérií. Po prestávke sa najdlhší rekord nestráca. Aktuálna séria zostáva aktívna do konca nasledujúceho dňa po poslednom tréningu.
+4. **Zvládnutie kategórií:** odznaky za všetky prioritné slovesá, frázy, podstatné mená a ostatné výrazy *v každej lekcii*, aj za ich zvládnutie v celom kurze. Zvládnutie znamená opakované úspešné **samostatné písanie oboma smermi počas aspoň dvoch rôznych dní**, nie iba kliknutie na správnu možnosť.
+5. **Špeciálne úspechy:** bezchybné 15/15 kolá, návraty po dvojdňovej pauze, náprava predchádzajúcich chýb a dokončenie denných výziev.
+6. **Tri denné úlohy:** 15 odpovedí, z toho 10 správne, a 5 rôznych výrazov. Od levelu 3 je voliteľný bonus 3 správne gramatické otázky. Denné úlohy sa automaticky obnovia o miestnej polnoci; prehľad je na domovskej obrazovke aj v Štatistikách.
 
-Prešli syntaktické kontroly všetkých JS súborov, testy pre všetkých osem základných importov, výber gramatických úloh, pomer opakovania problémových a zvládnutých výrazov a simulovaný prechod 15-otázkovým levelom a 50-otázkovým testom v prehliadači. Skutočný IndexedDB prehliadača, nasadený GitHub Pages a migráciu na tvojom zariadení treba overiť pri nasadení.
+## Poznámka o počítaní
+
+Jedna otázka párovania päť dvojíc môže uložiť päť samostatných odpovedí. Míľniky a denné úlohy počítajú uložené odpovede vrátane jednotlivých párov. Skutočne osvojené položky sa počítajú zvlášť podľa pravidiel opakovania.
+
+Rekordy a denné výzvy sa vypočítavajú zo zachovanej histórie odpovedí, takže sa prenesú spolu so zálohou a nevyžadujú novú databázovú schému. Reset pokroku vynuluje aj tieto štatistiky. Pri zmene časovej zóny sa denná aktivita interpretuje podľa miestneho času súčasného zariadenia.
+
+## Poznámky k aktualizácii zo starších verzií 1.9.2 a 1.9.3
+
+1. **Najprv dokonči rozbehnuté kolo.** Potom v aplikácii otvor `Import a zálohy → Stiahnuť kompletnú zálohu`.
+2. Rozbaľ ZIP a nahraj obsah aplikácie do koreňa vetvy `main` repozitára `MartinTomcikMT/deutsch-trainer` (nahraď existujúce súbory; z nových je dôležitý aj `extras.js`).
+3. Otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.9.41`, skontroluj štítok `v1.9.41`. Pri starej verzii použi tlačidlo obnovenia alebo Ctrl+Shift+R. **Nevymazávaj údaje stránky ani IndexedDB.**
+4. Nový JSON nemusíš znovu importovať, pokiaľ už máš slovník z 1.9.2/1.9.3. Ak začínaš od nuly, v ZIP máš prioritný a kompletný import; stačí jeden.
+
+Načítanie starých slovíčok, odpovedí a dokončených levelov je zachované; žiadna migračná operácia ani zmena názvu IndexedDB nie je potrebná.
+
+## Ďalšie verzie
+
+Pozri `ROADMAP_2.0-3.0.md`. Jazykové mutácie sú v 2.0, cloud a OAuth v 3.0, viac jazykov a samostatné kurzy v 4.0 a špecializovaná gramatika v 5.0.

@@ -1,4 +1,4 @@
-/* Deutsch Trainer 1.9.3 – spaced balanced review, A2+ grammar and final exam. */
+/* Deutsch Trainer 1.9.41 – guaranteed sentence mix, spaced balanced review, A2+ grammar and final exam. */
 'use strict';
 const DeutschGame = (()=>{
   const SIZE=5,STEPS=15,OPENING=10,PASS=12,EXAM_STEPS=50,EXAM_PASS=40;
@@ -86,17 +86,30 @@ const DeutschGame = (()=>{
     }
     return chosen.filter(Boolean);
   }
+  // The older routine appended grammar last and popped off the last tasks to
+  // stay within ten questions. This inadvertently removed sentence building.
+  // Explicitly reserve slots for different task families BEFORE filling with
+  // translations; later grammar tasks must never displace a built sentence.
   function buildOpening(focus,review,source,level=1){
     if(!focus.length)return [];
     const picked=selectReviews(review,10);
-    const tasks=focus.map(e=>translation(e,false,'choices'));
-    const pairs=match5([...focus,...picked]);if(pairs)tasks.push(pairs);
-    const phrases=[...focus,...picked].filter(e=>e.type==='phrase');
-    const fill=shuffled(phrases).map(e=>clozeChoice(e,source)).find(Boolean);if(fill)tasks.push(fill);
-    const build=shuffled(phrases).map(e=>buildSentence(e,source)).find(Boolean);if(build)tasks.push(build);
-    const grammar=grammarTasks(picked,level>=3?2:0,level);
-    // Keep at least two grammatical tasks per level once the review pool is established.
-    while(tasks.length>OPENING-grammar.length)tasks.pop();
+    const already=[...new Map([...focus,...picked].map(e=>[e.id,e])).values()];
+    const knownSentences=shuffled(already.filter(e=>e.type==='phrase'));
+    const seenInLesson=shuffled(source.filter(e=>e.type==='phrase'&&Number(e.review?.attempts||0)>0));
+    const futureSentences=shuffled(source.filter(e=>e.type==='phrase'));
+    const sentencePool=[...new Map([...knownSentences,...seenInLesson,...futureSentences].map(e=>[e.id,e])).values()];
+    const findTask=make=>sentencePool.map(e=>make(e,source)).find(Boolean);
+    const build=findTask(buildSentence);
+    const cloze=findTask(clozeChoice);
+    const pairs=match5([...focus,...picked]);
+    const grammar=grammarTasks([...picked,...focus],level>=3?2:0,level);
+    const tasks=[];
+    // Introduce the five level words before adding any mixed exercises.
+    for(const e of focus)tasks.push(translation(e,false,'choices'));
+    // A sentence and a fill-in-the-blank now have protected positions.
+    if(build)tasks.push(build);
+    if(cloze)tasks.push(cloze);
+    if(pairs)tasks.push(pairs);
     tasks.push(...grammar);
     let idx=0;
     while(tasks.length<OPENING){

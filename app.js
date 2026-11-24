@@ -1,10 +1,10 @@
-/* Deutsch Trainer 1.9.3 – balanced spaced review, grammar, exams, lifelong badges. */
+/* Deutsch Trainer 1.9.41 – balanced spaced review, grammar, exams, lifelong badges. */
 'use strict';
 
 const DB_NAME = 'deutsch-trainer-v1';
 const DB_VERSION = 3;
 const DATA_FORMAT = 'deutsch-trainer';
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.9.41';
 const DATA_VERSION = 1;
 const entryFields = ['type','de','sk','article','plural','preterite','perfect','auxiliary','exampleDe','exampleSk','level','lesson','notes'];
 const typeLabels = {verb:'Sloveso',noun:'Podstatné meno',phrase:'Fráza / veta',other:'Slovíčko'};
@@ -923,7 +923,7 @@ async function startDuolingo(){
   const review=getDuoReviewPool(lesson,level);
   const lessonEntries=entries.filter(e=>lessonMatches(e,lesson));
   const tasks=DeutschGame.buildOpening(focus,review,lessonEntries,level);
-  const newAtStart=new Set(focus.filter(e=>!DeutschSRS.hasStudied(e)).map(e=>e.id));
+  const newAtStart=new Set([...focus,...tasks.filter(t=>['buildSentence','clozeChoice'].includes(t.kind)).map(t=>entries.find(e=>e.id===t.entryId)).filter(Boolean)].filter(e=>!DeutschSRS.hasStudied(e)).map(e=>e.id));
   quiz={tasks,index:0,good:0,answered:0,mode:'type',resolved:false,style:'duo',lesson,level,focus,review,
     introEnabled:true,previewedIds:new Set(),newAtStart,recapCreated:false,misses:[]};
   $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
@@ -971,7 +971,8 @@ function renderLearningStats(){
   const report=DeutschSRS.summarize(attempts,entries);
   $('statsToday').textContent=report.today;
   $('statsWeek').textContent=report.week;
-  $('statsMastered').textContent=report.mastered;
+  // Match the achievements counter: mastered in BOTH directions over multiple days.
+  $('statsMastered').textContent=entries.filter(DeutschSRS.duoMastered).length;
   $('statsNewToday').textContent=report.newToday;
   $('statsNewWeek').textContent=report.newWeek;
   $('statsDue').textContent=report.due;
@@ -999,7 +1000,7 @@ async function refreshApp(){
   const url=new URL(window.location.href);url.searchParams.set('dt_reload',Date.now().toString());window.location.replace(url.href);
 }
 
-const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.9.3 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
+const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.9.41 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
 async function copyText(text){
   try{await navigator.clipboard.writeText(text);notify('Prompt je skopírovaný. Vlož ho do ChatGPT a doplň zoznam slov.');}
   catch{const el=$('jsonInput');el.value=text;el.focus();el.select();notify('Automatické kopírovanie nie je dostupné. Prompt je označený, skopíruj ho pomocou Ctrl+C.');}
