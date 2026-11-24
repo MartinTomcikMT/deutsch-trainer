@@ -1,10 +1,10 @@
-/* Deutsch Trainer 1.9.2 – local edition, A2+ Duolingo, achievements, safe reset. */
+/* Deutsch Trainer 1.9.3 – balanced spaced review, grammar, exams, lifelong badges. */
 'use strict';
 
 const DB_NAME = 'deutsch-trainer-v1';
 const DB_VERSION = 3;
 const DATA_FORMAT = 'deutsch-trainer';
-const APP_VERSION = '1.9.2';
+const APP_VERSION = '1.9.3';
 const DATA_VERSION = 1;
 const entryFields = ['type','de','sk','article','plural','preterite','perfect','auxiliary','exampleDe','exampleSk','level','lesson','notes'];
 const typeLabels = {verb:'Sloveso',noun:'Podstatné meno',phrase:'Fráza / veta',other:'Slovíčko'};
@@ -118,7 +118,7 @@ function normalizeEntry(raw,keepProgress=false) {
   }
   if(keepProgress && raw.reviewModes && typeof raw.reviewModes==='object') {
     for(const [kind,state] of Object.entries(raw.reviewModes)){
-      if(!['de_to_sk','sk_to_de','cloze','cloze_sk','perfect','preterite','article','plural'].includes(kind))continue;
+      if(!['de_to_sk','sk_to_de','cloze','cloze_sk','perfect','preterite','article','plural','case_article'].includes(kind))continue;
       if(!state||typeof state!=='object')continue;
       item.reviewModes[kind]={attempts:Math.max(0,Number(state.attempts)||0),correct:Math.max(0,Number(state.correct)||0),
         wrong:Math.max(0,Number(state.wrong)||0),streak:Math.max(0,Number(state.streak)||0),
@@ -278,7 +278,9 @@ function duoLessonProgress(key){
   const d=duoLessonState(key);
   const passed=[...new Set(d.completed||[])].filter(n=>n>=1&&n<=levels);
   let current=1;while(passed.includes(current))current++;
-  return {total:pool.length,levels,passed:passed.length,current:Math.min(current,Math.max(1,levels)),done:levels>0&&passed.length===levels,mastered:pool.filter(DeutschSRS.duoMastered).length,introduced:pool.filter(DeutschSRS.hasStudied).length};
+  const levelsDone=levels>0&&passed.length===levels;
+  const examPassed=!!d.finalExam?.passed;
+  return {total:pool.length,levels,passed:passed.length,current:Math.min(current,Math.max(1,levels)),levelsDone,examReady:levelsDone&&!examPassed,examPassed,done:levelsDone&&examPassed,mastered:pool.filter(DeutschSRS.duoMastered).length,introduced:pool.filter(DeutschSRS.hasStudied).length};
 }
 function duoLessonUnlocked(key){
   if(!/^lesson-\d+$/.test(key))return false;
@@ -292,7 +294,7 @@ function renderDuoLessonOptions(){
   for(let i=1;i<=8;i++){
     const key='lesson-'+i;const status=duoLessonProgress(key);const enabled=duoLessonUnlocked(key)&&status.total>0;
     const opt=document.createElement('option');opt.value=key;opt.disabled=!enabled;
-    opt.textContent=lessonLabel(key)+(status.total?` (${status.passed}/${status.levels} úrovní)`:' (zatiaľ nenahraté)')+(enabled?'':' 🔒');
+    opt.textContent=lessonLabel(key)+(status.total?` (${status.passed}/${status.levels} úrovní${status.examReady?', čaká test':status.done?', hotovo':''})`:' (zatiaľ nenahraté)')+(enabled?'':' 🔒');
     select.add(opt);
   }
   const prevOpt=[...select.options].find(x=>x.value===previous&&!x.disabled);
@@ -458,6 +460,7 @@ function correctAnswer(e,kind,task=null){
     case 'match5':return 'Všetkých päť správnych dvojíc';
     case 'cloze':return task?.answer||'';
     case 'cloze_sk':return task?.answer||'';
+    case 'case_article':return task?.answer||'';
     case 'article':return e.article;
     case 'plural':return e.plural;
     case 'preterite':return e.preterite;
@@ -502,7 +505,7 @@ function currentEntry(){return entries.find(e=>e.id===currentTask().entryId);}
 function promptFor(e,kind,task=null){
   switch(kind){
     case 'match5':return {label:'SPOJ 5 DVOJÍC',q:'Nájdi päť správnych prekladov',context:'Spoj nemecké výrazy s ich slovenským významom.'};
-    case 'buildSentence':return {label:'POSKLADAJ VETU',q:'Zostav vetu po nemecky',context:`Celá slovenská veta: ${task.fullSk}`};
+    case 'buildSentence':return {label:'POSKLADAJ VETU PO NEMECKY',q:task.fullSk,context:'Poskladaj nemecký preklad slovenskej vety z ponúknutých slov. Dve slová sú navyše.'};
     case 'clozeChoice':return {label:'DOPLŇ SLOVO Z MOŽNOSTÍ',q:task.question,context:`Celá veta po slovensky: ${task.fullSk}\nVyber chýbajúce nemecké slovo.`};
     case 'cloze': {
       const fullSk=task?.fullSk||e.exampleSk||e.sk;
@@ -511,11 +514,12 @@ function promptFor(e,kind,task=null){
     }
     case 'cloze_sk':return {label:'DOPLŇ CHÝBAJÚCE SLOVENSKÉ SLOVO',q:task?.question||e.sk,
       context:`Celá veta po nemecky: ${task?.fullDe||e.de}\nDoplň jedno slovo do slovenskej vety.`};
+    case 'case_article':return {label:'SKLOŇOVANIE URČITÉHO ČLENA',q:`${displayName(e)} · ${task.caseName}`,context:`Aký určitý člen má slovo „${e.de}“ v ${task.caseName==='Dativ'?'datíve (3. páde)':'akuzatíve (4. páde)'}? Napíš iba člen.`};
     case 'article':return {label:'SPRÁVNY ČLEN',q:`Aký člen má slovo „${e.de}“?`,context:'Napíš der, die alebo das.'};
     case 'plural':return {label:'MNOŽNÉ ČÍSLO',q:`Aké je množné číslo slova „${displayName(e)}“?`,context:'Napíš množné číslo aj s členom, napríklad die Bücher.'};
     case 'preterite':return {label:'PRÄTERITUM',q:`er/sie/es ______ · ${e.de}`,context:`Doplň tvar Präteritum slovesa „${e.de}“ (${e.sk}).`};
     case 'perfect':return {label:'PERFEKT',q:`er/sie/es ______ · ${e.de}`,context:`Napíš pomocné sloveso a Partizip II (${e.sk}). Príklad: ist gegangen.`};
-    case 'de_to_sk':return {label:'PREKLAD DO SLOVENČINY',q:displayName(e),context:'Napíš slovenský význam. Člen je už súčasťou nemeckého slova.'};
+    case 'de_to_sk':return {label:'PREKLAD DO SLOVENČINY',q:displayName(e),context:e.type==='noun'?'Prelož nemecké podstatné meno do slovenčiny.':'Prelož nemecký výraz alebo vetu do slovenčiny.'};
     default:return {label:'PREKLAD DO NEMČINY',q:primaryTranslation(e,'de_to_sk'),context:e.type==='noun'?'Napíš nemecké slovo aj s členom.':'Napíš nemecký preklad.'};
   }
 }
@@ -523,13 +527,15 @@ function renderQuestion(){
   if(!quiz)return;
   quiz.resolved=false;
   const e=currentEntry(),task=currentTask();const q=promptFor(e,task.kind,task);
-  const all=quiz.style==='duo'?DeutschGame.STEPS:quiz.tasks.length;
-  const label=quiz.style==='duo'?` · ${quiz.index<DeutschGame.OPENING?'prvé precvičenie':'záverečné opakovanie'}`:'';
+  const all=quiz.tasks.length;
+  const label=quiz.style==='duo'?` · ${quiz.index<DeutschGame.OPENING?'prvé precvičenie':'záverečné opakovanie'}`:quiz.style==='exam'?' · záverečný test lekcie':'';
   $('practiceProgressLabel').textContent=`Otázka ${quiz.index+1} / ${all}${label}`;
   $('progressBar').style.width=`${(quiz.index)/all*100}%`;
   $('questionType').textContent=q.label;$('questionPrompt').textContent=q.q;
-  $('questionContext').textContent=q.context;$('questionContext').className='question-context';
   quiz.activeInputMode=activeAnswerMode(e,task);
+  const instruction=quiz.activeInputMode==='choices'&&task.kind==='de_to_sk'?'Vyber správny slovenský preklad.':
+    quiz.activeInputMode==='choices'&&task.kind==='sk_to_de'?'Vyber správny nemecký preklad.':q.context;
+  $('questionContext').textContent=instruction;$('questionContext').className='question-context';
   quiz.choiceOptions=quiz.activeInputMode==='choices'?(task.kind==='clozeChoice'?task.choices:choiceCandidates(e,task.kind)):[];
   if(quiz.activeInputMode==='choices'&&quiz.choiceOptions.length!==3)quiz.activeInputMode='type';
   for(const [id,mode] of [['typedAnswerBox','type'],['choiceAnswerBox','choices'],['flashcardAnswerBox','card'],['matchAnswerBox','match'],['builderAnswerBox','build']]){
@@ -545,7 +551,7 @@ function renderQuestion(){
   $('answerResult').className='answer-result hidden';
   $('nextQuestionBtn').classList.add('hidden');$('gradeButtons').classList.add('hidden');$('revealAnswerBtn').classList.remove('hidden');
   $('answerInput').value='';
-  const firstGrammar=quiz.style==='duo'&&['perfect','preterite','article','plural'].includes(task.kind)&&DeutschSRS.isNew(e,task.kind)&&!quiz.previewedIds.has(e.id+'::'+task.kind);
+  const firstGrammar=quiz.style==='duo'&&['perfect','preterite','article','plural','case_article'].includes(task.kind)&&DeutschSRS.isNew(e,task.kind)&&!quiz.previewedIds.has(e.id+'::'+task.kind);
   const intro=quiz.style==='duo' && quiz.introEnabled && ((quiz.newAtStart?.has(e.id)&&!quiz.previewedIds.has(e.id))||firstGrammar);
   $('introPreview').classList.toggle('hidden',!intro);$('questionCard').classList.toggle('hidden',intro);
   if(intro){
@@ -557,7 +563,7 @@ function renderQuestion(){
     }else{
       quiz.previewedIds.add(e.id);
       $('introGerman').textContent=displayName(e);$('introSlovak').textContent=e.sk;
-      $('introExtra').textContent=e.type==='verb'?'Zatiaľ si zapamätaj význam slovesa. Minulé časy sa pridajú neskôr.':'';
+      $('introExtra').textContent=e.type==='verb'?'Zapamätaj si význam. Perfekt a Präteritum si začneš precvičovať pri opakovaní v ďalších leveloch.':'';
       $('introExtra').classList.toggle('hidden',e.type!=='verb');
     }
     $('introExample').replaceChildren();
@@ -682,7 +688,7 @@ function choiceCandidates(entry,kind){
   const labelFor=e=>kind==='de_to_sk'?primaryTranslation(e,'de_to_sk'):displayName(e);
   const correctText=labelFor(entry);
   const correctKeys=new Set(acceptableAnswers(entry,kind));
-  const currentPool=(quiz.style==='duo'?studyPool():practiceSelectedEntries()).filter(x=>x.type===entry.type);
+  const currentPool=(['duo','exam'].includes(quiz.style)?studyPool():practiceSelectedEntries()).filter(x=>x.type===entry.type);
   const largerPool=entries.filter(x=>x.type===entry.type);
   const found=new Map();
   const addPool=pool=>{
@@ -705,7 +711,7 @@ function choiceCandidates(entry,kind){
   return shuffle([{label:correctText,correct:true},...nearby.map(x=>({label:x.label,correct:false}))]);
 }
 function activeAnswerMode(entry,task){
-  if(quiz.style==='duo'){
+  if(quiz.style==='duo'||quiz.style==='exam'){
     if(task.kind==='match5')return 'match';
     if(task.kind==='buildSentence')return 'build';
     if(task.kind==='clozeChoice')return 'choices';
@@ -731,7 +737,7 @@ async function recordAttempt(isCorrect){
   quiz.resolved=true;const task=currentTask();
   quiz.answered++;if(isCorrect)quiz.good++;
   try{
-    if(quiz.style==='duo'&&task.kind==='match5'){
+    if(['duo','exam'].includes(quiz.style)&&task.kind==='match5'){
       const missed=quiz.matchState.mistakes;
       for(let i=0;i<task.pairs.length;i++){
         const e=entries.find(x=>x.id===task.pairs[i].entryId);
@@ -743,7 +749,8 @@ async function recordAttempt(isCorrect){
       await saveAttemptFor(e,kind,isCorrect,quiz.activeInputMode==='choices'?'choices':'recall');
       if(quiz.style==='duo'&&!isCorrect)quiz.misses.push(e.id);
     }
-    renderStats();if(quiz.style==='duo')renderDuoLessonOptions();
+    if(quiz.style==='exam'&&['perfect','preterite','case_article','article','plural'].includes(task.kind)){quiz.grammarAsked++;if(isCorrect)quiz.grammarGood++;}
+    renderStats();if(['duo','exam'].includes(quiz.style))renderDuoLessonOptions();
   }catch(err){notify('Odpoveď sa nepodarilo uložiť: '+err.message,true);}
 }
 function showAnswerResult(correct){
@@ -831,14 +838,14 @@ async function finalizeDuoRound(){
   try{await saveDuoState();renderAchievements();}catch(err){notify('Výsledok úrovne sa nepodarilo uložiť: '+err.message,true);}
   const status=duoLessonProgress(key);
   $('duoFinishInfo').classList.remove('hidden');
-  $('duoFinishInfo').innerHTML=`<strong>${passed?'✓ Úroveň '+level+' dokončená!':'Úroveň '+level+' zatiaľ nie je dokončená'}</strong><p>${passed?(status.done?'Celá lekcia dokončená. Ďalšia lekcia je odomknutá, ak je naimportovaná.':'Môžeš pokračovať na úroveň '+status.current+'.'):'Na postup potrebuješ aspoň '+DeutschGame.PASS+' správnych odpovedí z 15. Zopakuj rovnakú úroveň.'}</p><p>V lekcii máš dokončených <b>${status.passed} z ${status.levels}</b> úrovní.</p>`;
+  $('duoFinishInfo').innerHTML=`<strong>${passed?'✓ Úroveň '+level+' dokončená!':'Úroveň '+level+' zatiaľ nie je dokončená'}</strong><p>${passed?(status.examReady?'Všetky úrovne sú hotové. Nasleduje záverečný test z celej lekcie.':status.done?'Celá lekcia aj test sú hotové.':'Môžeš pokračovať na úroveň '+status.current+'.'):'Na postup potrebuješ aspoň '+DeutschGame.PASS+' správnych odpovedí z 15. Zopakuj rovnakú úroveň.'}</p><p>V lekcii máš dokončených <b>${status.passed} z ${status.levels}</b> úrovní.</p>`;
 }
 async function nextQuestion(){
   if(!quiz||!quiz.resolved)return;
   quiz.index++;
   if(quiz.style==='duo' && quiz.index===DeutschGame.OPENING && !quiz.recapCreated){
     quiz.recapCreated=true;
-    const recap=DeutschGame.buildRecap(quiz.focus,quiz.review,quiz.misses);
+    const recap=DeutschGame.buildRecap(quiz.focus,quiz.review,quiz.misses,quiz.level);
     quiz.tasks.push(...recap);
   }
   if(quiz.index>=quiz.tasks.length){
@@ -846,78 +853,119 @@ async function nextQuestion(){
     $('practiceActive').classList.add('hidden');$('practiceFinished').classList.remove('hidden');
     $('practiceSummary').textContent=`Správne odpovede: ${quiz.good} z ${quiz.answered} (${Math.round(100*quiz.good/Math.max(quiz.answered,1))} %).`;
     $('progressBar').style.width='100%';
-    if(quiz.style==='duo')await finalizeDuoRound();else $('duoFinishInfo').classList.add('hidden');
+    if(quiz.style==='duo')await finalizeDuoRound();else if(quiz.style==='exam')await finalizeDuoExam();else $('duoFinishInfo').classList.add('hidden');
     renderQuizAvailability();renderDuoLessonOptions();updateDuolingoPreview();
   }else renderQuestion();
 }
 function resetPractice(){
   document.querySelector('#page-trening h1').textContent='Vlastný tréning';
+  document.querySelector('#page-trening .page-lead').textContent='Vyber ľubovoľnú lekciu bez zamykania. Typ učiva je záväzný: slovíčka = iba slovíčka, frázy = iba frázy. Gramatiku si zapni zvlášť v pokročilých možnostiach.';
   const previousStyle=quiz?.style;
   quiz=null;$('introPreview').classList.add('hidden');$('questionCard').classList.remove('hidden');
   $('practiceActive').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceSetup').classList.remove('hidden');
   $('duoActiveHint').classList.add('hidden');
-  if(previousStyle==='duo')switchPage('ucenie');
+  if(previousStyle==='duo'||previousStyle==='exam')switchPage('ucenie');
 }
 function studyPool(){
   const lesson=$('studyLesson').value;
   return duoLessonUnlocked(lesson)?duoCoreForLesson(lesson):[];
 }
 function getDuoReviewPool(key,level){
-  const core=duoCoreForLesson(key);const prior=core.slice(0,(level-1)*DeutschGame.SIZE);
+  const core=duoCoreForLesson(key),prior=core.slice(0,(level-1)*DeutschGame.SIZE);
   const n=Number(key.slice(7));
-  for(let x=1;x<n;x++)for(const e of duoCoreForLesson('lesson-'+x)){
-    if(DeutschSRS.hasStudied(e)&&(e.review?.wrong>0||due(e)))prior.push(e);
+  // Bring back both challenging AND solid words from preceding lessons.
+  for(let x=1;x<n;x++){
+    const older=duoCoreForLesson('lesson-'+x).filter(DeutschSRS.hasStudied);
+    prior.push(...DeutschGame.selectReviews(older,8));
   }
   const unique=[...new Map(prior.map(e=>[e.id,e])).values()];
-  return unique.sort(DeutschGame.sortWeak).slice(0,24);
+  return DeutschGame.selectReviews(unique,36);
 }
+
 function updateDuolingoPreview(){
   const lesson=$('studyLesson').value,status=duoLessonProgress(lesson),state=duoLessonState(lesson);
   $('duoLessonTitle').textContent=lessonLabel(lesson);
   $('duoLessonNumbers').textContent=`${status.passed} / ${status.levels} úrovní · ${Math.min(status.passed*DeutschGame.SIZE,status.total)} / ${status.total} výrazov`;
   $('duoLessonBar').style.width=(status.levels?100*status.passed/status.levels:0)+'%';
-  $('duoLessonHint').textContent=status.done?'Lekcia dokončená. Môžeš pokračovať ďalej.':
-    `Aktuálne: úroveň ${status.current} z ${status.levels}. Na postup potrebuješ 12 z 15 správnych odpovedí. Na ďalšiu lekciu dokonči všetky úrovne.`;
+  $('duoLessonHint').textContent=status.done?'Všetky úrovne aj záverečný test sú hotové. Ďalšia lekcia je odomknutá.':status.examReady?
+    `Všetkých ${status.levels} úrovní máš hotových. Teraz absolvuj záverečný test 50 otázok (minimálne 40 správnych a 6 správnych gramatických úloh).`:
+    `Aktuálne: úroveň ${status.current} z ${status.levels}. Na postup potrebuješ 12 z 15 správnych odpovedí. Na ďalšiu lekciu treba aj záverečný test.`;
   $('duoLevelGrid').replaceChildren();
   for(let n=1;n<=status.levels;n++){
-    const done=(state.completed||[]).includes(n),current=n===status.current&&!status.done;
+    const done=(state.completed||[]).includes(n),current=n===status.current&&!status.levelsDone;
     const cell=document.createElement('div');cell.className='duo-level-chip'+(done?' done':current?' current':' locked');
     cell.innerHTML=`<strong>${done?'✓':n}</strong><span>${done?'Hotovo':current?'Teraz':'Zamknuté'}</span>`;
     $('duoLevelGrid').append(cell);
   }
+  const testCell=document.createElement('div');testCell.className='duo-level-chip'+(status.examPassed?' done':status.examReady?' current':' locked');
+  testCell.innerHTML=`<strong>🏁</strong><span>${status.examPassed?'Test ✓':status.examReady?'Test teraz':'Test 🔒'}</span>`;
+  $('duoLevelGrid').append(testCell);
   const pool=studyPool(),review=getDuoReviewPool(lesson,status.current);
   const focus=pool.slice((status.current-1)*DeutschGame.SIZE,status.current*DeutschGame.SIZE);
-  $('duoDueCount').textContent=`Nové slová v tejto úrovni: ${focus.filter(e=>!DeutschSRS.hasStudied(e)).length} · Preberané na opakovanie: ${review.length} · Slovesá v učive: ${pool.filter(e=>e.type==='verb').length}.`;
-  $('duoPreview').innerHTML=pool.length?`<strong>Úroveň ${status.current} z ${status.levels}: 15 úloh · 10 na učenie + 5 opakovaní</strong><br>${status.done?'Všetky úrovne sú hotové. Môžeš si ešte precvičiť poslednú.':'Postupne prejdeš '+pool.length+' základných A2+ výrazov vrátane '+pool.filter(e=>e.type==='verb').length+' slovies. Na konci kola sa vrátia najmä chybné odpovede.'}`:
-    '<strong>Táto lekcia je zamknutá alebo zatiaľ nie je naimportovaná.</strong>';
+  $('duoDueCount').textContent=`Nové slová v tejto úrovni: ${focus.filter(e=>!DeutschSRS.hasStudied(e)).length} · Na opakovanie: ${review.length} · Slovesá v učive: ${pool.filter(e=>e.type==='verb').length}.`;
+  $('duoPreview').innerHTML=pool.length?(status.examReady?
+    `<strong>Záverečný test: ${DeutschGame.EXAM_STEPS} otázok zo všetkých ${pool.length} výrazov</strong><br>Výber pokryje preklady, gramatické tvary, členy a vety naprieč lekciou. Odomkne ďalšiu lekciu.`:
+    `<strong>Úroveň ${status.current} z ${status.levels}: 15 úloh · 10 učenie + 5 opakovanie</strong><br>${status.done?'Lekcia už je hotová. Môžeš si zopakovať posledný level.':'Priebežne precvičuješ '+pool.length+' výrazov vrátane '+pool.filter(e=>e.type==='verb').length+' slovies. Od úrovne 3 sú pravidelné aj otázky na Perfekt, Präteritum a skloňovanie členov.'}`):
+    '<strong>Táto lekcia je zamknutá alebo ešte nebola naimportovaná.</strong>';
+  $('beginDuoBtn').textContent=status.examReady?'Spustiť záverečný test →':'Spustiť Duolingo tréning →';
   $('beginDuoBtn').disabled=!pool.length||!duoLessonUnlocked(lesson);
 }
+
 async function startDuolingo(){
   const lesson=$('studyLesson').value;
   if(!duoLessonUnlocked(lesson)){notify('Túto lekciu odomkneš dokončením predošlej lekcie.',true);return;}
   const pool=studyPool(),status=duoLessonProgress(lesson),level=status.current;
+  if(status.examReady){await startDuoExam(lesson,pool);return;}
   const focus=pool.slice((level-1)*DeutschGame.SIZE,level*DeutschGame.SIZE);
   if(!focus.length){notify('Pre túto lekciu chýba učivo. Najprv importuj slovíčka.',true);return;}
   const previous=duoLessonState(lesson);
   if((previous.coreIds||[]).join('|')!==pool.map(x=>x.id).join('|')){duoState.lessons[lesson]={...previous,coreIds:pool.map(x=>x.id)};await saveDuoState();}
   const review=getDuoReviewPool(lesson,level);
   const lessonEntries=entries.filter(e=>lessonMatches(e,lesson));
-  const tasks=DeutschGame.buildOpening(focus,review,lessonEntries);
-  // Grammar appears only after the meaning is established in both directions.
-  if(level>=5){const ready=review.find(e=>e.type==='verb'&&e.perfect&&DeutschSRS.duoMastered(e));
-    if(ready)tasks[9]={entryId:ready.id,kind:'perfect',stage:'new',step:10,modeHint:'type'};
-  }
+  const tasks=DeutschGame.buildOpening(focus,review,lessonEntries,level);
   const newAtStart=new Set(focus.filter(e=>!DeutschSRS.hasStudied(e)).map(e=>e.id));
   quiz={tasks,index:0,good:0,answered:0,mode:'type',resolved:false,style:'duo',lesson,level,focus,review,
     introEnabled:true,previewedIds:new Set(),newAtStart,recapCreated:false,misses:[]};
   $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
+  $('duoActiveHint').textContent='✳ Duolingo · 1–10 učenie a pestré úlohy · 11–15 vyvážené opakovanie (aj známe slová)';
   $('duoActiveHint').classList.remove('hidden');$('duoFinishInfo').classList.add('hidden');
   switchPage('trening');
   document.querySelector('#page-trening h1').textContent=`Duolingo · Úroveň ${level}`;
+  document.querySelector('#page-trening .page-lead').textContent='Precvičovanie z učebnice A2+: 5 nových výrazov, vyvážené opakovanie známych aj chybných odpovedí a pravidelná gramatika.';
   $('breadcrumb').innerHTML=`Osobná učebnica <span>/</span> Duolingo · Úroveň ${level}`;
   document.querySelectorAll('.nav-link').forEach(btn=>btn.classList.toggle('active',btn.dataset.page==='ucenie'));
   renderQuestion();
 }
+
+async function startDuoExam(lesson,pool){
+  const tasks=DeutschGame.buildExam(pool,entries.filter(e=>lessonMatches(e,lesson)));
+  if(tasks.length!==DeutschGame.EXAM_STEPS){notify('Test sa nepodarilo zostaviť.',true);return;}
+  quiz={tasks,index:0,good:0,answered:0,mode:'type',resolved:false,style:'exam',lesson,level:0,
+    introEnabled:false,previewedIds:new Set(),newAtStart:new Set(),recapCreated:true,misses:[],grammarAsked:0,grammarGood:0};
+  $('practiceSetup').classList.add('hidden');$('practiceFinished').classList.add('hidden');$('practiceActive').classList.remove('hidden');
+  $('duoActiveHint').textContent='🏁 Záverečný test · 50 otázok · 80 % úspešnosť a aspoň 6 správnych gramatických úloh';
+  $('duoActiveHint').classList.remove('hidden');$('duoFinishInfo').classList.add('hidden');
+  switchPage('trening');
+  document.querySelector('#page-trening h1').textContent='Duolingo · Záverečný test';
+  document.querySelector('#page-trening .page-lead').textContent='50 zmiešaných úloh zo všetkých tém danej lekcie. Na postup potrebuješ 40 správnych odpovedí, vrátane aspoň šiestich gramatických.';
+  $('breadcrumb').innerHTML='Osobná učebnica <span>/</span> Záverečný test';
+  document.querySelectorAll('.nav-link').forEach(btn=>btn.classList.toggle('active',btn.dataset.page==='ucenie'));
+  renderQuestion();
+}
+async function finalizeDuoExam(){
+  const d={...duoLessonState(quiz.lesson)},pass=quiz.good>=DeutschGame.EXAM_PASS&&quiz.grammarGood>=6;
+  const before=d.finalExam||{};
+  d.finalExam={passed:!!before.passed||pass,best:Math.max(Number(before.best)||0,quiz.good),
+    attempts:(Number(before.attempts)||0)+1,lastScore:quiz.good,lastGrammar:quiz.grammarGood,
+    passedAt:before.passedAt||(pass?new Date().toISOString():null)};
+  duoState.lessons[quiz.lesson]=d;
+  try{await saveDuoState();renderAchievements();}catch(err){notify('Záverečný test sa nepodarilo uložiť: '+err.message,true);}
+  $('duoFinishInfo').classList.remove('hidden');
+  $('duoFinishInfo').innerHTML=`<strong>${pass?'🏆 Záverečný test úspešný!':'Záverečný test zatiaľ nebol splnený'}</strong>
+    <p>Správne: <b>${quiz.good} / ${DeutschGame.EXAM_STEPS}</b>, gramatické otázky: <b>${quiz.grammarGood} / ${quiz.grammarAsked}</b>.</p>
+    <p>${pass?'Ďalšia lekcia je odomknutá.':'Na postup potrebuješ minimálne 40 z 50 a aspoň 6 gramatických odpovedí. Môžeš si test zopakovať; každé opakovanie vyberie inú kombináciu.'}</p>`;
+}
+
 function renderLearningStats(){
   if(!$('statsToday'))return;
   const report=DeutschSRS.summarize(attempts,entries);
@@ -951,7 +999,7 @@ async function refreshApp(){
   const url=new URL(window.location.href);url.searchParams.set('dt_reload',Date.now().toString());window.location.replace(url.href);
 }
 
-const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.9 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
+const CHATGPT_PROMPT=`Priprav mi import do webovej aplikácie Deutsch Trainer 1.9.3 z nasledujúcich nemeckých slovíčok a viet. Vráť IBA validný JSON, bez markdown bloku a bez vysvetlení. Štruktúra: {"format":"deutsch-trainer","version":1,"entries":[{"type":"verb","de":"gehen","sk":"ísť pešo","preterite":"ging","perfect":"ist gegangen","auxiliary":"sein","level":"A1","tags":["Pohyb"],"exampleDe":"Ich gehe nach Hause.","exampleSk":"Idem domov.","notes":""}]}. Povolené typy: verb, noun, phrase, other. Pri podstatných menách ulož základný tvar BEZ člena do "de" a člen zvlášť do "article" (der/die/das), množné číslo do "plural" (napr. "die Häuser"). Pri slovesách používaj Präteritum pre er/sie/es (napr. ging) a Perfekt pre er/sie/es (napr. ist gegangen). Nepíš vymyslené tvary, pri neistote nechaj voliteľné pole prázdne. Každá položka musí mať type, de, sk. Ak ide o učivo z lekcie, priraď každému záznamu rovnaké pole lesson, napríklad "Begegnungen A2+ – Lekcia 2"; toto pole je dôležité pre filtrovanie tréningu podľa lekcií. Ďalšie voliteľné polia: article, plural, preterite, perfect, auxiliary, exampleDe, exampleSk, notes, level, lesson, lessons, tags, alternatives. Text neprekladaj do angličtiny. Tu je môj zoznam:\n\n`;
 async function copyText(text){
   try{await navigator.clipboard.writeText(text);notify('Prompt je skopírovaný. Vlož ho do ChatGPT a doplň zoznam slov.');}
   catch{const el=$('jsonInput');el.value=text;el.focus();el.select();notify('Automatické kopírovanie nie je dostupné. Prompt je označený, skopíruj ho pomocou Ctrl+C.');}

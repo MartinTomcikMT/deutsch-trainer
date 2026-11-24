@@ -1,40 +1,38 @@
-# Deutsch Trainer 1.9.2 – kompletná lokálna verzia
+# Deutsch Trainer 1.9.3 – aktualizácia učenia A2+
 
-**Google prihlásenie a Supabase sú zámerne odložené na 2.0.** Táto verzia nevyžaduje žiadne prihlasovanie, cloudovú konfiguráciu ani externý JavaScript a funguje na GitHub Pages aj offline.
+**Kompletná lokálna verzia aplikácie.** Vychádza z 1.9.2 a obsahuje aj všetky jej funkcie. Nepotrebuje Supabase, Google OAuth ani ďalší účet. Cloudová synchronizácia a prihlásenie sú stále plánované pre **2.0**.
 
-## Novinky v sérii 1.9
+## Novinky 1.9.3
 
-- **Duolingo podľa Begegnungen A2+** – základ približne 150 výrazov na lekciu vrátane dôležitých slovies, 30 úrovní po 5 výrazoch (pri migrácii starých dokončených úrovní ich môže byť viac), 15 otázok v každom kole, 5 záverečných opakovaní a návrat k chybným slovám. Úspech v kole vyžaduje najmenej 12 správnych odpovedí. Výber používa tagy `Jadro A2+ L1` až `L8` z aktualizovaného JSON.
-- **Opravené odpovede** – `seit` uzná ako `od`; vysvetlenia v zátvorkách a gramatické poznámky nie sú povinné. Zachované alternatívne preklady, `ß ↔ ss`, umlauty a veľké písmená.
-- **Odznaky** – desať úspechov v štatistikách za odpovede, počet precvičených slov, levely, perfektné kolá a denné série.
-- **Časový pozdrav** – automaticky sa mení medzi Guten Morgen / Guten Tag / Guten Abend / Gute Nacht podľa hodín zariadenia, aj keď stránka zostane otvorená.
-- **Reset priamo v aplikácii** – Import a zálohy → Správa uložených údajov.
+1. **Výraznejšie otázky a celé vety:** Hlavný text na preklad má na desktopoch približne 29–43 px, na mobile najmenej 27 px; sprievodné informácie sú čitateľnejšie. Pri skladaní slov je veľkým písmom slovenská veta, ktorú má študent preložiť.
+2. **Vyvážené opakovanie:** Z doterajších slov vyberá zmes problematických, starších/opakovaných aj správne zvládnutých. Chybné výrazy majú vyššiu prioritu, nie však 100 % otázok. Po 10 úvodných úlohách nasleduje 5 záverečných opakovaní; medzi nimi sú pri dostupnosti aj dobre zvládnuté výrazy.
+3. **Gramatika už od Levelu 3:** Do úvodných desiatich úloh sa pravidelne vkladajú 2 otázky podľa rotácie Perfekt, Präteritum, články/plurál a určité členy v Akkusatíve/Datíve. Ak je to možné, na záverečnom opakovaní pribudne ešte gramatika. Použité tvary pochádzajú z naimportovaných polí `perfect`, `preterite`, `article` a `plural`. Pred prvým skúšaním neznámeho gramatického tvaru zobrazí náhľad so správnym riešením. **Úplné skloňovanie prídavných mien a všetkých osobných zámen zatiaľ nie je implementované.**
+4. **Záverečný test lekcie:** Po dokončení všetkých 30 (alebo viac pri migrácii) levelov nasleduje test s **50 otázkami**. Test vyberá výrazové kategórie a typy cvičení naprieč *celou* prioritnou slovnou zásobou danej lekcie; nepýta sa na všetkých 150 výrazov jednotlivo. Obsahuje **minimálne 13 gramatických úloh** (4 Perfekt, 4 Präteritum, 2 skloňovanie člena, 2 plurál, 1 člen), preklady aj úlohy s vetami, ak sú dostupné. Na postup treba aspoň **40/50** a **6 správnych gramatických odpovedí**. Pri neúspechu sa test dá zopakovať s iným výberom. Až úspešný test odomkne nasledujúcu lekciu.
+5. **Achievements 42 odznakov:** Viacstupňové dlhodobé ciele pre počet otázok, správne odpovede, počet rôznych výrazov, dokončené levely, záverečné testy, bezchybné 15/15 kolá, denné série a jednotlivé gramatické oblasti. Napredovanie vidíš na indikátoroch. Dlhodobá séria zostáva započítaná aj po jej prerušení.
 
-## Dva typy resetu
+## Úplné pokrytie *Begegnungen A2+*?
 
-1. **Vynulovať iba progres** – zmaže históriu odpovedí, rozložené opakovanie, úspechy, štatistiky a uložené Duolingo levely, pričom **všetky slovíčka, preklady a lekcie zostanú**. Po dokončení začneš od Levelu 1.
-2. **Vymazať celú databázu** – zmaže slovíčka, lekcie, výsledky, štatistiky aj odznaky. Na stránke Import môžeš následne vložiť nový JSON a začať od prvého levelu. **Kód aplikácie zostane zachovaný**.
+Prioritný výber má **150 položiek v každej z ôsmich lekcií**, ale **nie je to úplný výpis každej povinnej frázy, každého príkladu alebo gramatického pravidla**. Obsah lekcií sa líši, pevné číslo 150 je praktická priorita, nie pedagogický dôkaz úplnosti. Údaje obsahujú 32–45 slovies na lekciu a pri všetkých prioritných slovesách sú vyplnené `perfect` a `preterite`; zatiaľ sú to prevažne **tvary er/sie/es**, nie cvičenia časovania všetkých osôb. Pri podstatných menách je vyplnený člen a pri väčšine aj plurál. V budúcej verzii má zmysel vykonať samostatný audit povinných úloh častí A/C a záverečných prehľadov D každého kapitolu.
 
-Obe operácie sú atomické transakcie v IndexedDB: pri zlyhaní sa transakcia neuloží napoly. Obe operácie majú potvrdzovací dialóg s ručným prepísaním slova `RESET` alebo `VYMAZAT`. Nemusíš otvárať vývojárske nástroje prehliadača.
+## Zálohy, import a kompatibilita
 
-**Pred resetom si odporúčame stiahnuť kompletnú JSON zálohu.** Len záloha s `backup: true` obnovuje tiež predchádzajúci progres. Bežný učebný import JSON progres nevráti.
+- Pred aktualizáciou si vždy stiahni **Import a zálohy → Stiahnuť kompletnú zálohu**.
+- Ak máš už najnovšiu databázu 1.9.2, **nemusíš nanovo importovať JSON**. Aplikácia pri aktualizácii mení plánovanie cvičení, nie slovník.
+- Pre nový začiatok je v ZIP `A2plus-jadro-lekcie-1-8.json` (iba prioritné) a `A2plus-kompletny-slovnik-1-8.json` (prioritné a rozšírené). Importuj len jeden z nich. `ukazkove-slovicka.json` je demonštračný súbor a nemusíš ho importovať.
+- História, progres, dokončené levely aj obe resetovacie funkcie zostávajú kompatibilné s 1.9.2; záverečný test sa zavádza až teraz. Ak si mal už všetky levely kapitoly, po aktualizácii sa ti zobrazí záverečný test pred odomknutím ďalšej kapitoly.
+- Údaje zostávajú v **IndexedDB tvojho prehliadača**. Automatické cloudové zálohovanie zatiaľ nie je dostupné.
 
-## Inštalácia na GitHub Pages
+## Nahratie na GitHub Pages
 
-1. Pred aktualizáciou vytvor v starej aplikácii **Import a zálohy → Stiahnuť kompletnú zálohu**. Nemaž IndexedDB, cache prehliadača ani údaje stránky.
-2. Nahraj **rozbalený obsah ZIP do rootu `main`** svojho GitHub repozitára: `index.html`, `app.js`, `spaced.js`, `duo-game.js`, `extras.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, `ukazkove-slovicka.json`, priečinok `icons` a `.nojekyll`. Súbory Supabase (`cloud.js`, `cloud-features.js`, `cloud-config.js` ani `cloud-schema.sql`) verzia 1.9.2 nepotrebuje. Ak v repozitári už existujú, môžu ostať ako nepoužívané, ale nie sú súčasťou balíka.
-3. Otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.9.2` a over štítok verzie `v1.9.2`.
-4. Po aktualizácii importuj **jeden** z pripravených JSON: `A2plus-jadro-lekcie-1-8.json` (učivo na približne 150 výrazov v každej lekcii) alebo `A2plus-kompletny-slovnik-1-8.json` (celý slovník s rozšírením). Nový import doplní existujúce záznamy a nevymaže tvoje odpovede.
-5. Ak chceš začať s nulovým progresom ale rovnakým slovníkom, použi **Vynulovať iba progres**. Ak chceš odstrániť aj staré importy a mať výlučne najnovší slovník, použi **Vymazať celú databázu** a potom naimportuj jeden z nových JSON.
+1. Rozbaľ ZIP a nahraj obsah do **koreňa vetvy `main`** existujúceho repo `MartinTomcikMT/deutsch-trainer`.
+2. Dôležité sú všetky aplikačné súbory: `index.html`, `app.js`, `duo-game.js`, `spaced.js`, `extras.js`, `styles.css`, `sw.js`, `manifest.webmanifest`, `.nojekyll`, priečinok `icons` a `ukazkove-slovicka.json`. Súbory JSON so slovníkmi zostávajú na stiahnutie alebo import, nie sú automaticky načítané pri štarte.
+3. Otvor `https://martintomcikmt.github.io/deutsch-trainer/?v=1.9.3` a skontroluj štítok **v1.9.3**. Pri zobrazovaní starej verzie použi **Obnoviť aplikáciu** alebo v prehliadači Ctrl+Shift+R; nevymazávaj údaje stránky.
+4. Spusti aspoň jeden level Duolinga a skontroluj úlohy aj Štatistiky → Úspechy a odznaky.
 
-### Súbory v ZIP
+## Plánované vyššie verzie
 
-- `A2plus-jadro-lekcie-1-8.json`: prioritné učivo, vrátane slovies z prehľadov kapitol, vhodné na nový začiatok.
-- `A2plus-kompletny-slovnik-1-8.json`: rozšírená databáza na vyhľadávanie a vlastný tréning.
-- Ostatné: kompletná webová aplikácia, PWA ikony a offline servisný worker.
+Pozri `ROADMAP_2.0-3.0.md` v tomto ZIP. Súčasná verzia 1.9.3 **ešte neumožňuje** prihlásenie cez Google ani štúdium ľubovoľných jazykových párov. Importy iných kníh sa v 1.x nemajú miešať do rovnakých čísel lekcií, pretože zatiaľ neexistuje samostatný identifikátor kurzu.
 
-**Upozornenie:** Obe JSON databázy vznikli ako študijné materiály odvodené z učebnice; nie sú oficiálnym úplným slovníkom vydavateľa a preklady neboli všetky individuálne pedagogicky overené.
+### Overenie
 
-## Ochrana dát a ďalšie smerovanie
-
-Údaje v 1.9.2 zostávajú **výlučne v IndexedDB aktuálneho prehliadača**. Nie sú prístupné na druhom zariadení. Ak vymažeš údaje stránky, stratíš aj databázu. Cloudová synchronizácia, Google prihlásenie a oddelenie používateľských účtov sú plánované až pre verziu **2.0**. Synchronizácia ani cloud samy osebe nenahrádzajú samostatné zálohovanie.
+Prešli syntaktické kontroly všetkých JS súborov, testy pre všetkých osem základných importov, výber gramatických úloh, pomer opakovania problémových a zvládnutých výrazov a simulovaný prechod 15-otázkovým levelom a 50-otázkovým testom v prehliadači. Skutočný IndexedDB prehliadača, nasadený GitHub Pages a migráciu na tvojom zariadení treba overiť pri nasadení.

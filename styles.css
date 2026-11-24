@@ -149,3 +149,18 @@
 .reset-dialog .dialog-body{padding:20px 26px}
 .reset-dialog .dialog-actions{padding:14px 26px 20px;display:flex;justify-content:end;gap:12px}
 @media(max-width:640px){.reset-options{grid-template-columns:1fr}.reset-zone{padding:18px}}
+
+/* v1.9.3 – questions readable on desktop and mobile, including longer sentences. */
+.question-card #questionPrompt{font-size:clamp(29px,3.5vw,43px);line-height:1.38;font-weight:800;letter-spacing:-.025em;margin:21px 0 28px;max-width:100%;overflow-wrap:anywhere;color:#152f3b}
+.question-card .question-context{font-size:clamp(15px,1.5vw,18px);line-height:1.65;color:#355965;background:#f1f7f4;border:1px solid #d9ebe2;padding:15px 17px;border-radius:12px;margin:-8px 0 23px;white-space:pre-line}
+.question-card .question-type{font-size:12px;letter-spacing:1.15px}
+.question-card .choice-instruction{font-size:14px}
+.achievement-overview{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#f0f7f3;padding:14px 17px;border-radius:12px}
+.achievement-overview small{font-size:12px;color:#526f6b}
+.achievement-cards{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+.achievement-track{background:#dcebe6;height:7px;border-radius:7px;overflow:hidden;margin-top:auto}
+.achievement-track span{display:block;background:#258c79;height:100%;border-radius:7px}
+.achievement-expanded{grid-column:1/-1;border:1px solid #d7e2dc;border-radius:12px;padding:13px 16px}
+.achievement-expanded summary{cursor:pointer;color:#256b63;font-weight:700;font-size:14px}
+.achievement-expanded .achievement-cards{margin-top:14px}
+@media(max-width:640px){.question-card{padding:24px 19px}.question-card #questionPrompt{font-size:clamp(27px,7vw,36px)}.question-card .question-context{font-size:16px;padding:13px}.achievement-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
